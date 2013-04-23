@@ -1,7 +1,7 @@
 import os
 import pprint
 from flask import Flask, Blueprint, current_app
-
+from werkzeug import import_string
 
 class Flails(object):
     def __init__(self, project_name, config_obj, routes=None, extensions=None):
@@ -18,7 +18,7 @@ class Flails(object):
         check_for = ['ROOT_DIR']
         for c in check_for:
             if not hasattr(config_obj, c):
-                raise Exception('Configuration MUST contain or specify in some manner: {}').format(c)
+                raise Exception('Configuration MUST contain or specify in some manner: {}'.format(c))
 
 
     def create_app(self,
@@ -40,6 +40,7 @@ class Flails(object):
                     template_folder=template_dir,
                     static_folder=static_dir)
         self.configure_app(app, settings)
+
         if self.app_extensions:
             self.configure_extensions(app)
 
@@ -171,21 +172,21 @@ class Flails(object):
                 if blueprint_routes:
                     urls.set_urls(blueprint_object, blueprint_routes)
 
-                for fn, values in [(configure_before_handlers,
+                for fn, values in [(self.configure_before_handlers,
                                     import_string('{}:BEFORE_REQUESTS'.format(blueprint), silent=True)),
-                                   (configure_before_app_handlers,
+                                   (self.configure_before_app_handlers,
                                     import_string('{}:BEFORE_APP_REQUESTS'.format(blueprint), silent=True)),
-                                   (configure_after_handlers,
+                                   (self.configure_after_handlers,
                                     import_string('{}:AFTER_REQUESTS'.format(blueprint), silent=True)),
-                                   (configure_after_app_handlers,
+                                   (self.configure_after_app_handlers,
                                     import_string('{}:AFTER_APP_REQUESTS'.format(blueprint), silent=True)),
-                                   (configure_context_processors,
+                                   (self.configure_context_processors,
                                     import_string('{}:CONTEXT_PROCESSORS'.format(blueprint), silent=True)),
-                                   (configure_app_context_processors,
+                                   (self.configure_app_context_processors,
                                     import_string('{}:APP_CONTEXT_PROCESSORS'.format(blueprint), silent=True)),
-                                   (configure_error_handlers,
+                                   (self.configure_error_handlers,
                                     import_string('{}:ERROR_HANDLERS'.format(blueprint), silent=True)),
-                                   (configure_app_error_handlers,
+                                   (self.configure_app_error_handlers,
                                     import_string('{}:APP_ERROR_HANDLERS'.format(blueprint), silent=True)),
                                  ]:
                     if values:
@@ -217,6 +218,7 @@ class Flails(object):
                 pp.pprint(item)
             except:
                 print "problem printing {}".format(item)
+        return info_list
 
 
 class RoutesManager(object):

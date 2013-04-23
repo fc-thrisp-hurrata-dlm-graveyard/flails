@@ -29,7 +29,7 @@ setup(
     name='Flask-Flails',
     version=__version__,
     url='http://',
-    license='MIT',
+    license='BSD',
     author='thrisp/hurrata',
     author_email='blueblank@gmail.com',
     description='Flask application factory',
