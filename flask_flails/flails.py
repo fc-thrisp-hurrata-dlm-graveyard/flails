@@ -5,7 +5,7 @@ from werkzeug import import_string
 
 class Flails(object):
     def __init__(self, project_name, config_obj, routes=None, extensions=None):
-        self.generated_application = None
+        self.generated_app = None
         self.project_name = project_name
         self.check_config(config_obj)
         self.config_obj = config_obj
@@ -64,7 +64,8 @@ class Flails(object):
                 fn(app, values)
 
         self.app_routes.set_urls(app)
-        return app
+        self.generated_app = app
+        return self.generated_app
 
 
     def configure_app(self, app, config):
@@ -215,9 +216,9 @@ class Flails(object):
         info_list.append(map_list)
         for item in info_list:
             try:
-                pp.pprint(item)
+                pp.pprint({"{}".format(item): getattr(self.generated_app, item)})
             except:
-                print "problem printing {}".format(item)
+                pp.pprint(item)
         return info_list
 
 

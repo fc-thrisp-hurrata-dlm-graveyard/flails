@@ -13,9 +13,6 @@ from flask.ext.flails import Flails
 from test_app.config.settings.default_settings import DefaultConfig, NonDefaultConfig
 from test_app.app import f, test_application
 
-TESTS = os.path.dirname(__file__)
-join = os.path.join
-
 
 class FlailsInstantiateCase(unittest.TestCase):
 
@@ -25,13 +22,19 @@ class FlailsInstantiateCase(unittest.TestCase):
         with self.assertRaises(Exception):
             g = Flails('test', NonDefaultConfig)
 
+
 class CreateAppCase(unittest.TestCase):
 
+    def setUp(self):
+        self.f = Flails('test', DefaultConfig)
+        self.a = f.create_app()
+
     def test_create_app(self):
-        f = Flails('test', DefaultConfig)
-        a = f.create_app()
-        self.assertIsInstance(a, Flask)
-        self.assertIsNotNone(f.app_info)
+        self.assertIsInstance(self.a, Flask)
+
+    def test_app_info(self):
+        self.assertIsNotNone(f.app_info())
+        self.assertIsNotNone(f.app_info('blueprints', 'extensions', 'jinja_env'))
 
 class CreatedAppCase(unittest.TestCase):
 
@@ -46,6 +49,7 @@ class CreatedAppCase(unittest.TestCase):
         self.assertIsInstance(self.app, Flask)
         self.assertEqual(self.app.static_folder, self.static_path)
         self.assertEqual(self.app.template_folder, self.template_path)
+
 
 def suite():
     suite = unittest.TestSuite()
