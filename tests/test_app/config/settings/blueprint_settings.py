@@ -1,0 +1,3 @@
+class BlueprintConfig(object):
+    BLUEPRINTS = [
+    ]
