@@ -17,7 +17,7 @@ Links
   <http://>`_
 
 """
-from flask_flap import __version__
+from flask_flails import __version__
 from setuptools import setup
 import sys
 

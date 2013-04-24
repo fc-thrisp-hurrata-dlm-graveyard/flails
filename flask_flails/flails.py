@@ -1,12 +1,13 @@
 import os
 import pprint
 from flask import Flask, Blueprint, current_app
-from werkzeug import import_string
+from werkzeug import import_string, cached_property
 
 class Flails(object):
-    def __init__(self, project_name, config_obj):
+
+    def __init__(self, app_name=None, config_obj=None):
         self.generated_app = None
-        self.project_name = project_name
+        self.app_name = app_name
         self.check_config(config_obj)
         self.config_obj = config_obj
         self.app_root = config_obj.ROOT_DIR
@@ -20,30 +21,56 @@ class Flails(object):
                 raise Exception('Configuration MUST contain or specify in some manner: {}'.format(c))
 
 
+    @cached_property
+    def template_dir(self):
+        return os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'templates')
+
+
+    @cached_property
+    def static_dir(self):
+        return os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'static')
+
+
+    def create_time_additions(self, what, to_add):
+        if to_add and hasattr(self.config_obj, what):
+            x = getattr(self.config_obj, what)
+            x.extend(to_add)
+        elif to_add:
+            setattr(self.config_obj, what.capitalize(), to_add)
+        else:
+            pass
+
     def create_app(self,
                    settings=None,
-                   app_name=None,
+                   extensions=None,
                    blueprints=None):
 
-        template_dir = os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'templates')
-        static_dir = os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'static')
+        self.create_time_additions('EXTENSIONS', extensions)
+        self.create_time_additions('BLUEPRINTS', blueprints)
 
-        if app_name is None:
-            app_name = self.project_name
-        if blueprints is None:
-            blueprints = self.config_obj.BLUEPRINTS
-        else:
-            blueprints.extend(self.config_obj.BLUEPRINTS)
+        #if extensions and self.has_extensions:
+        #    self.config_obj.EXTENSIONS.extend(extensions)
+        #elif extensions:
+        #    self.config_obj.EXTENSIONS = extensions
+        #else:
+        #    pass
 
-        app = Flask(app_name,
-                    template_folder=template_dir,
-                    static_folder=static_dir)
+        #if blueprints and self.has_blueprints:
+        #    self.config_obj.BLUEPRINTS.extend(blueprints)
+        #elif blueprints:
+        #    self.config_obj.BLUEPRINTS = blueprints
+        #else:
+        #    pass
+
+        app = Flask(self.app_name,
+                    template_folder=self.template_dir,
+                    static_folder=self.static_dir)
+
         self.configure_app(app, settings)
 
-        if hasattr(self.config_obj, 'EXTENSIONS'):
-            self.configure_extensions(app, self.config_obj.EXTENSIONS)
-
-        for fn, values in [(self.configure_middlewares,
+        for fn, values in [(self.configure_extensions,
+                            getattr(self.config_obj, 'EXTENSIONS', None)),
+                           (self.configure_middlewares,
                             getattr(self.config_obj, 'MIDDLEWARES', None)),
                            (self.configure_context_processors,
                             getattr(self.config_obj, 'CONTEXT_PROCESSORS', None)),
@@ -61,6 +88,7 @@ class Flails(object):
                             getattr(self.config_obj, 'BLUEPRINTS', None))]:
             if values:
                 fn(app, values)
+
         if hasattr(self.config_obj, 'APP_ROUTES'):
             self.app_routes.set_urls(app, self.config_obj.APP_ROUTES)
         self.generated_app = app
@@ -71,7 +99,7 @@ class Flails(object):
         app.config.from_object(self.config_obj)
         if config is not None:
             app.config.from_object(config)
-        app.config.from_envvar("{}_APP_CONFIG".format(self.project_name.upper()), silent=True)
+        app.config.from_envvar("{}_APP_CONFIG".format(self.app_name.upper()), silent=True)
 
 
     def configure_extensions(self, app, extensions):
@@ -208,14 +236,14 @@ class Flails(object):
             info_list = list(args)
         else:
             info_list = []
-        config_list = []
+        config_var_list = []
         for k, v in self.generated_app.config.iteritems():
-            config_list.append("{}: {}".format(k, v))
-        info_list.append(config_list)
-        map_list = []
+            config_var_list.append("{}: {}".format(k, v))
+        info_list.append(config_var_list)
+        url_map_list = []
         for i in self.generated_app.url_map.iter_rules():
-            map_list.append(i)
-        info_list.append(map_list)
+            url_map_list.append(i)
+        info_list.append(url_map_list)
         for item in info_list:
             if isinstance(item, list):
                 pp.pprint(item)
@@ -302,3 +330,9 @@ class ExtensionConfig(object):
 
     def by_init(self, app):
         return self.extension_class.init_app(app, *self.args, **self.kwargs)
+
+    def __repr__(self):
+        return "<ExtensionConfig object: {}, args: {}, kwargs: {}>".format \
+                (self.extension_class.__name__,
+                 self.args,
+                 self.kwargs)
