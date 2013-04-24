@@ -5,13 +5,16 @@ from werkzeug import import_string, cached_property
 
 class Flails(object):
 
-    def __init__(self, app_name=None, config_obj=None):
+    def __init__(self, app_name=None,
+                       config_obj=None,
+                       requested_info=None):
         self.generated_app = None
         self.app_name = app_name
         self.check_config(config_obj)
         self.config_obj = config_obj
         self.app_root = config_obj.ROOT_DIR
         self.app_routes = RoutesManager()
+        self.requested_info = requested_info
 
 
     def check_config(self, config_obj):
@@ -30,15 +33,6 @@ class Flails(object):
     def static_dir(self):
         return os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'static')
 
-
-    def create_time_additions(self, what, to_add):
-        if to_add and hasattr(self.config_obj, what):
-            x = getattr(self.config_obj, what)
-            x.extend(to_add)
-        elif to_add:
-            setattr(self.config_obj, what, to_add)
-        else:
-            pass
 
     def create_app(self,
                    settings=None,
@@ -76,10 +70,23 @@ class Flails(object):
                 fn(app, values)
 
         if hasattr(self.config_obj, 'APP_ROUTES'):
-            self.app_routes.set_urls(app, self.config_obj.APP_ROUTES)
+            self.app_routes.configure_urls(app, self.config_obj.APP_ROUTES)
+
         self.generated_app = app
+
+        setattr(self, 'generated_app_info', AppInfo(self.generated_app,
+                                                    self.requested_info))
+
         return self.generated_app
 
+    def create_time_additions(self, what, to_add):
+        if to_add and hasattr(self.config_obj, what):
+            x = getattr(self.config_obj, what)
+            x.extend(to_add)
+        elif to_add:
+            setattr(self.config_obj, what, to_add)
+        else:
+            pass
 
     def configure_app(self, app, config):
         app.config.from_object(self.config_obj)
@@ -94,13 +101,32 @@ class Flails(object):
                 extension.initiate(app)
             except Exception as e:
                raise Exception("""
-                               could not register extension with application\n
+                               could not register {} with application\n
                                {}
-                               """.format(e))
+                               """.format(extension, e))
 
 
     def configure_middlewares(self, app, middlewares):
-        pass
+        """
+        Adds middlewares to the app.
+        """
+        if middlewares:
+            for m in middlewares:
+                if isinstance(m, list) or isinstance(m, tuple):
+                    if len(m) == 3:
+                        mware, args, kwargs = m
+                        new_mware = mware(app.wsgi_app, *args, **kwargs)
+                    elif len(m) == 2:
+                        mware, args = m
+                        if isinstance(args, dict):
+                            new_mware = mware(app.wsgi_app, **args)
+                        elif isinstance(args, list) or isinstance(args, tuple):
+                            new_mware = mware(app.wsgi_app, *args)
+                        else:
+                            new_mware = mware(app.wsgi_app, args)
+                else:
+                    new_mware = m(app.wsgi_app)
+                app.wsgi_app = new_mware
 
 
     def configure_context_processors(self, app, context_processors):
@@ -187,7 +213,7 @@ class Flails(object):
                 import_string('{}.urls:routes'.format(blueprint_import_name))
                 if blueprint_routes:
                     self.app_routes.routes.extend(blueprint_routes)
-                    self.app_routes.set_urls(blueprint_object, blueprint_routes)
+                    self.app_routes.configure_urls(blueprint_object, blueprint_routes)
 
                 for fn, values in [(self.configure_before_handlers,
                                     import_string('{}:BEFORE_REQUESTS'.format(blueprint), silent=True)),
@@ -215,36 +241,52 @@ class Flails(object):
                 app.register_blueprint(blueprint_object)
 
 
-    def app_info(self, *args):
-        ''' information about your generated flask application'''
-        pp = pprint.PrettyPrinter(indent=4)
-        if args:
-            info_list = list(args)
-        else:
-            info_list = []
-        config_var_list = []
-        for k, v in self.generated_app.config.iteritems():
-            config_var_list.append("{}: {}".format(k, v))
-        info_list.append(config_var_list)
-        url_map_list = []
-        for i in self.generated_app.url_map.iter_rules():
-            url_map_list.append(i)
-        info_list.append(url_map_list)
-        for item in info_list:
-            if isinstance(item, list):
-                pp.pprint(item)
-            if isinstance(item, str):
-                k = "{}".format(str(item))
-                pp.pprint({k: getattr(self.generated_app, k)})
-        #pp.pprint(self.app_routes.routes)
-        return info_list
+class AppInfo(object):
+    """Information about a generated flask application"""
+
+    def __init__(self, app, requested):
+        self.app = app
+        self.provide_information = ['url_map', 'config_vars']
+        if requested:
+            self.provide_information.extend(requested)
+        self.printer = pprint.PrettyPrinter(indent=4)
+
+
+    @property
+    def config_vars(self):
+        return {k: v for k,v in self.app.config.iteritems()}
+
+
+    @property
+    def url_map(self):
+        return [r for r in self.app.url_map.iter_rules()]
+
+
+    def return_basic(self, item):
+        return getattr(self.app, item)
+
+    @property
+    def app_information(self):
+        to_return  = {}
+        for item in self.provide_information:
+            if hasattr(self, item):
+                to_return[item] = getattr(self, item)
+            else:
+                to_return[str(item)] = getattr(getattr(self.app, item),
+                                               "__dict__",
+                                               self.return_basic(item))
+        return to_return
+
+    @property
+    def formatted(self):
+        self.printer.pprint(self.app_information)
 
 
 class RoutesManager(object):
     def __init__(self):
         self.routes = []
 
-    def set_urls(self, app, routes):
+    def configure_urls(self, app, routes):
         """
         Connects url patterns to actions for the given wsgi `app`.
         """
@@ -319,6 +361,6 @@ class ExtensionConfig(object):
 
     def __repr__(self):
         return "<ExtensionConfig object: {}, args: {}, kwargs: {}>".format \
-                (self.extension_class.__name__,
+                (getattr(self.extension_class, "__name__", str(self.extension_class)),
                  self.args,
                  self.kwargs)
