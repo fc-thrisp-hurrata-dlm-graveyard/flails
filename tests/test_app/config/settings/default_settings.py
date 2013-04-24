@@ -1,7 +1,10 @@
 #site
 from flask import render_template
 from os import path, urandom
+from url_settings import UrlConfig
 from blueprint_settings import BlueprintConfig
+from flask.ext.macro4 import Macro4
+from flask.ext.misaka import Misaka
 
 PROJECT = "test_app"
 
@@ -17,7 +20,7 @@ class BaseConfig(object):
     SECRET_SALT = 'secret_salt'
 
 
-class DefaultConfig(BaseConfig, BlueprintConfig):
+class DefaultConfig(BaseConfig, BlueprintConfig, UrlConfig):
 
     DEBUG = True
 
@@ -60,6 +63,8 @@ class DefaultConfig(BaseConfig, BlueprintConfig):
         (405, lambda error: (render_template("errors/method_not_allowed.html"), 405)),
         (500, lambda error: (render_template("errors/server_error.html"), 500))
     ]
+
+    EXTENSIONS = [Macro4, Misaka]
 
 class NonDefaultConfig(BaseConfig, BlueprintConfig):
 

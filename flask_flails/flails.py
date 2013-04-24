@@ -4,14 +4,13 @@ from flask import Flask, Blueprint, current_app
 from werkzeug import import_string
 
 class Flails(object):
-    def __init__(self, project_name, config_obj, routes=None, extensions=None):
+    def __init__(self, project_name, config_obj):
         self.generated_app = None
         self.project_name = project_name
         self.check_config(config_obj)
         self.config_obj = config_obj
         self.app_root = config_obj.ROOT_DIR
-        self.app_routes = RoutesManager(routes)
-        self.app_extensions = extensions
+        self.app_routes = RoutesManager()
 
 
     def check_config(self, config_obj):
@@ -41,8 +40,8 @@ class Flails(object):
                     static_folder=static_dir)
         self.configure_app(app, settings)
 
-        if self.app_extensions:
-            self.configure_extensions(app)
+        if hasattr(self.config_obj, 'EXTENSIONS'):
+            self.configure_extensions(app, self.config_obj.EXTENSIONS)
 
         for fn, values in [(self.configure_middlewares,
                             getattr(self.config_obj, 'MIDDLEWARES', None)),
@@ -62,8 +61,8 @@ class Flails(object):
                             getattr(self.config_obj, 'BLUEPRINTS', None))]:
             if values:
                 fn(app, values)
-
-        self.app_routes.set_urls(app)
+        if hasattr(self.config_obj, 'APP_ROUTES'):
+            self.app_routes.set_urls(app, self.config_obj.APP_ROUTES)
         self.generated_app = app
         return self.generated_app
 
@@ -75,14 +74,14 @@ class Flails(object):
         app.config.from_envvar("{}_APP_CONFIG".format(self.project_name.upper()), silent=True)
 
 
-    def configure_extensions(self, app):
-        for e in self.extensions:
-           try:
-               e(app)
-           except:
-               e.init_app(app)
-           else:
-               raise Exception("could not register {} with application".format(e.__name__))
+    def configure_extensions(self, app, extensions):
+        for extension in extensions:
+            #try:
+            extension(app)
+            #except:
+            #    e.init_app(app)
+            #else:
+            #   raise Exception("could not register {} with application".format(extension.__name__))
 
 
     def configure_middlewares(self, app, middlewares):
@@ -127,13 +126,13 @@ class Flails(object):
             after = app.after_request(after)
 
 
-    def configure_after_app_handlers(self, app, after_handlers):
+    def configure_after_app_handlers(self, bp, after_handlers):
         """
         Sets after handlers.
         When called from a blueprint, works on the application level rather than blueprint level.
         """
         for after in after_handlers:
-            after = app.after_app_request(after)
+            after = bp.after_app_request(after)
 
 
     def configure_log_handlers(self, app, log_handlers):
@@ -170,8 +169,10 @@ class Flails(object):
                 options = dict(static_folder='static', template_folder='templates')
                 blueprint_object = Blueprint(blueprint_name, blueprint_import_name, **options)
                 blueprint_routes = import_string('{}.urls:routes'.format(blueprint_import_name), silent=True)
+                import_string('{}.urls:routes'.format(blueprint_import_name))
                 if blueprint_routes:
-                    urls.set_urls(blueprint_object, blueprint_routes)
+                    self.app_routes.routes.extend(blueprint_routes)
+                    self.app_routes.set_urls(blueprint_object, blueprint_routes)
 
                 for fn, values in [(self.configure_before_handlers,
                                     import_string('{}:BEFORE_REQUESTS'.format(blueprint), silent=True)),
@@ -215,26 +216,30 @@ class Flails(object):
             map_list.append(i)
         info_list.append(map_list)
         for item in info_list:
-            try:
-                pp.pprint({"{}".format(item): getattr(self.generated_app, item)})
-            except:
+            if isinstance(item, list):
                 pp.pprint(item)
+            if isinstance(item, str):
+                k = "{}".format(str(item))
+                pp.pprint({k: getattr(self.generated_app, k)})
+        #pp.pprint(self.app_routes.routes)
         return info_list
 
 
 class RoutesManager(object):
-    def __init__(self, routes):
-        self.routes = routes
+    def __init__(self):
+        self.routes = []
 
-    def set_urls(self, app):
+    def set_urls(self, app, routes):
         """
         Connects url patterns to actions for the given wsgi `app`.
         """
-        if self.routes:
-            for rule in self.routes:
+        if routes:
+            for rule in routes:
                 # Set url rule.
+                self.routes.append(rule)
                 url_rule, endpoint, view_func, opts = self.parse_url_rule(rule)
-                self.app.add_url_rule(url_rule, endpoint=endpoint, view_func=view_func, **opts)
+                app.add_url_rule(url_rule, endpoint=endpoint, view_func=view_func, **opts)
+
 
     def parse_url_rule(self, rule):
         """

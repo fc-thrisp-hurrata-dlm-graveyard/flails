@@ -11,8 +11,8 @@ import os
 from flask import Flask
 from flask.ext.flails import Flails
 from test_app.config.settings.default_settings import DefaultConfig, NonDefaultConfig
-from test_app.app import f, test_application
-
+from test_app.app import flails_instance, test_application
+from test_app.blueprints import post
 
 class FlailsInstantiateCase(unittest.TestCase):
 
@@ -27,19 +27,28 @@ class CreateAppCase(unittest.TestCase):
 
     def setUp(self):
         self.f = Flails('test', DefaultConfig)
-        self.a = f.create_app()
+        self.a = self.f.create_app()
 
     def test_create_app(self):
+        self.assertIsNotNone(self.f.generated_app)
         self.assertIsInstance(self.a, Flask)
 
+    def test_routes_registered(self):
+        pass
+
+    def test_extensions_registered(self):
+        self.assertEqual(self.a.extensions, self.f.generated_app.extensions)
+        #self.assertIsNotNone(self.a.extensions[''])
+        #self.assertIsInstance()
+
     def test_app_info(self):
-        self.assertIsNotNone(f.app_info())
-        self.assertIsNotNone(f.app_info('blueprints', 'extensions', 'jinja_env'))
+        self.assertIsNotNone(self.f.app_info('blueprints', 'extensions', 'jinja_env'))
+
 
 class CreatedAppCase(unittest.TestCase):
 
     def setUp(self):
-        self.f = f
+        self.f = flails_instance
         self.app = test_application
         self.template_path = os.path.join(os.path.dirname(os.path.abspath(DefaultConfig.ROOT_DIR)), 'templates')
         self.static_path = os.path.join(os.path.dirname(os.path.abspath(DefaultConfig.ROOT_DIR)), 'static')
