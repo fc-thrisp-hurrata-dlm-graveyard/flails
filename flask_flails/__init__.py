@@ -1,2 +1,2 @@
 __version__ = '0.0.1'
-from flails import Flails
+from flails import Flails, ExtensionConfig

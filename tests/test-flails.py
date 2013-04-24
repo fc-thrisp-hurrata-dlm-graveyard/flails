@@ -9,10 +9,12 @@ import unittest
 
 import os
 from flask import Flask
-from flask.ext.flails import Flails
+from flask.ext.flails import Flails, ExtensionConfig
 from test_app.config.settings.default_settings import DefaultConfig, NonDefaultConfig
 from test_app.app import flails_instance, test_application
 from test_app.blueprints import post
+from flask.ext.gravatar import Gravatar
+from flask.ext.cache import Cache
 
 class FlailsInstantiateCase(unittest.TestCase):
 
@@ -36,13 +38,23 @@ class CreateAppCase(unittest.TestCase):
     def test_routes_registered(self):
         pass
 
-    def test_extensions_registered(self):
-        self.assertEqual(self.a.extensions, self.f.generated_app.extensions)
-        #self.assertIsNotNone(self.a.extensions[''])
-        #self.assertIsInstance()
-
     def test_app_info(self):
         self.assertIsNotNone(self.f.app_info('blueprints', 'extensions', 'jinja_env'))
+
+
+class ExtensionRegisterCase(unittest.TestCase):
+
+    def setUp(self):
+        self.cache = Cache(config={'CACHE_TYPE': 'simple'})
+        DefaultConfig.EXTENSIONS = [ExtensionConfig(Gravatar, size=100, rating='g'),
+                                    ExtensionConfig(self.cache, init_type='by_init')]
+        self.f = Flails('test', DefaultConfig)
+        self.app = self.f.create_app()
+
+    def test_extension_registered(self):
+        self.assertEqual(self.app.extensions, self.f.generated_app.extensions)
+        self.assertIsNotNone(self.app.extensions)
+        self.assertIsInstance(self.app.extensions['gravatar'], Gravatar)
 
 
 class CreatedAppCase(unittest.TestCase):
@@ -64,6 +76,7 @@ def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(FlailsInstantiateCase))
     suite.addTest(unittest.makeSuite(CreateAppCase))
+    suite.addTest(unittest.makeSuite(ExtensionRegisterCase))
     suite.addTest(unittest.makeSuite(CreatedAppCase))
     return suite
 

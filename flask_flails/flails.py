@@ -76,12 +76,13 @@ class Flails(object):
 
     def configure_extensions(self, app, extensions):
         for extension in extensions:
-            #try:
-            extension(app)
-            #except:
-            #    e.init_app(app)
-            #else:
-            #   raise Exception("could not register {} with application".format(extension.__name__))
+            try:
+                extension.initiate(app)
+            except Exception as e:
+               raise Exception("""
+                               could not register extension with application\n
+                               {}
+                               """.format(e))
 
 
     def configure_middlewares(self, app, middlewares):
@@ -267,3 +268,37 @@ class RoutesManager(object):
             return (url_rule, None, view_func, {})
         else:
             raise ValueError('URL rule format not proper {}'.format(rule))
+
+
+class ExtensionConfig(object):
+    """
+    A wrapper for extension registry
+
+    defaults to to registering an extension to the app provided by:
+
+        by_class: ExtensionObject(app, *options, **options)
+
+    alternately
+
+        by_init: ExtensionObject.init_app(app, *options, **options)
+
+    Other extension registration methods should subclass and customize this class.
+
+    """
+    def __init__(self, extension_class, init_type='by_class', *args, **kwargs):
+        self.extension_class = extension_class
+        self.init_type = init_type
+        self.args = args
+        self.kwargs = kwargs
+
+    def initiate(self, app):
+        try:
+            return getattr(self, self.init_type, None)(app)
+        except:
+            raise Exception("{}").format(e)
+
+    def by_class(self, app):
+        return self.extension_class(app, *self.args, **self.kwargs)
+
+    def by_init(self, app):
+        return self.extension_class.init_app(app, *self.args, **self.kwargs)

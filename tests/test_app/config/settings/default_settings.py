@@ -5,6 +5,7 @@ from url_settings import UrlConfig
 from blueprint_settings import BlueprintConfig
 from flask.ext.macro4 import Macro4
 from flask.ext.misaka import Misaka
+from flask.ext.flails import ExtensionConfig
 
 PROJECT = "test_app"
 
@@ -64,7 +65,7 @@ class DefaultConfig(BaseConfig, BlueprintConfig, UrlConfig):
         (500, lambda error: (render_template("errors/server_error.html"), 500))
     ]
 
-    EXTENSIONS = [Macro4, Misaka]
+    EXTENSIONS = [ExtensionConfig(Macro4), ExtensionConfig(Misaka)]
 
 class NonDefaultConfig(BaseConfig, BlueprintConfig):
 
