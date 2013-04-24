@@ -36,7 +36,7 @@ class Flails(object):
             x = getattr(self.config_obj, what)
             x.extend(to_add)
         elif to_add:
-            setattr(self.config_obj, what.capitalize(), to_add)
+            setattr(self.config_obj, what, to_add)
         else:
             pass
 
@@ -47,20 +47,6 @@ class Flails(object):
 
         self.create_time_additions('EXTENSIONS', extensions)
         self.create_time_additions('BLUEPRINTS', blueprints)
-
-        #if extensions and self.has_extensions:
-        #    self.config_obj.EXTENSIONS.extend(extensions)
-        #elif extensions:
-        #    self.config_obj.EXTENSIONS = extensions
-        #else:
-        #    pass
-
-        #if blueprints and self.has_blueprints:
-        #    self.config_obj.BLUEPRINTS.extend(blueprints)
-        #elif blueprints:
-        #    self.config_obj.BLUEPRINTS = blueprints
-        #else:
-        #    pass
 
         app = Flask(self.app_name,
                     template_folder=self.template_dir,
