@@ -1,19 +1,17 @@
 import os
 import pprint
-from flask import Flask, Blueprint, current_app
-from werkzeug import import_string, cached_property
+from flask import Flask, Blueprint
+from werkzeug import import_string
 
 class Flails(object):
-
     def __init__(self, app_name=None,
                        config_obj=None,
                        requested_info=None):
         self.generated_app = None
         self.app_name = app_name
-        self.check_config(config_obj)
-        self.config_obj = config_obj
+        self.config_obj = self.check_config(config_obj)
         self.app_root = config_obj.ROOT_DIR
-        self.app_routes = RoutesManager()
+        self.app_routes = Flrm()
         self.requested_info = requested_info
 
 
@@ -22,31 +20,26 @@ class Flails(object):
         for c in check_for:
             if not hasattr(config_obj, c):
                 raise Exception('Configuration MUST contain or specify in some manner: {}'.format(c))
+        return config_obj
 
 
-    @cached_property
-    def template_dir(self):
-        return os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'templates')
+    def create_app(self, **kwargs):
 
+        self.create_time_additions('EXTENSIONS', kwargs.pop('extensions', None))
+        self.create_time_additions('BLUEPRINTS', kwargs.pop('blueprints', None))
 
-    @cached_property
-    def static_dir(self):
-        return os.path.join(os.path.dirname(os.path.abspath(self.app_root)), 'static')
+        app = Flask(self.app_name)
 
+        for k in kwargs:
+            if k in ('import_name',
+                     'static_url_path',
+                     'static_folder',
+                     'template_folder',
+                     'instance_path',
+                     'instance_relative_config'):
+                setattr(app, k, kwargs.pop(k))
 
-    def create_app(self,
-                   settings=None,
-                   extensions=None,
-                   blueprints=None):
-
-        self.create_time_additions('EXTENSIONS', extensions)
-        self.create_time_additions('BLUEPRINTS', blueprints)
-
-        app = Flask(self.app_name,
-                    template_folder=self.template_dir,
-                    static_folder=self.static_dir)
-
-        self.configure_app(app, settings)
+        self.configure_app(app, kwargs.pop('create_time_settings', None))
 
         for fn, values in [(self.configure_extensions,
                             getattr(self.config_obj, 'EXTENSIONS', None)),
@@ -88,10 +81,10 @@ class Flails(object):
         else:
             pass
 
-    def configure_app(self, app, config):
+    def configure_app(self, app, create_time_settings):
         app.config.from_object(self.config_obj)
-        if config is not None:
-            app.config.from_object(config)
+        if create_time_settings:
+            app.config.from_object(create_time_settings)
         app.config.from_envvar("{}_APP_CONFIG".format(self.app_name.upper()), silent=True)
 
 
@@ -100,10 +93,7 @@ class Flails(object):
             try:
                 extension.initiate(app)
             except Exception as e:
-               raise Exception("""
-                               could not register {} with application\n
-                               {}
-                               """.format(extension, e))
+               raise e
 
 
     def configure_middlewares(self, app, middlewares):
@@ -204,13 +194,12 @@ class Flails(object):
             url_prefix = None
             if len(blueprint) == 2:
                 blueprint, url_prefix = blueprint
-            blueprint_object = import_string("{}:BLUEPRINT".format(blueprint), silent=True)
+            blueprint_object = import_string("{}:BLUEPRINT".format(blueprint), silent=True)#seek multiple
             if not blueprint_object:
                 blueprint_name, blueprint_import_name = blueprint.split('.')[-1], blueprint
                 options = dict(static_folder='static', template_folder='templates')
                 blueprint_object = Blueprint(blueprint_name, blueprint_import_name, **options)
-                blueprint_routes = import_string('{}.urls:routes'.format(blueprint_import_name), silent=True)
-                import_string('{}.urls:routes'.format(blueprint_import_name))
+                blueprint_routes = import_string('{}.urls:routes'.format(blueprint_import_name), silent=True)#seek multiple
                 if blueprint_routes:
                     self.app_routes.routes.extend(blueprint_routes)
                     self.app_routes.configure_urls(blueprint_object, blueprint_routes)
@@ -244,7 +233,7 @@ class Flails(object):
 class AppInfo(object):
     """Information about a generated flask application"""
 
-    def __init__(self, app, requested):
+    def __init__(self, app, requested=None):
         self.app = app
         self.provide_information = ['url_map', 'config_vars']
         if requested:
@@ -265,6 +254,7 @@ class AppInfo(object):
     def return_basic(self, item):
         return getattr(self.app, item)
 
+
     @property
     def app_information(self):
         to_return  = {}
@@ -272,9 +262,9 @@ class AppInfo(object):
             if hasattr(self, item):
                 to_return[item] = getattr(self, item)
             else:
-                to_return[str(item)] = getattr(getattr(self.app, item),
-                                               "__dict__",
-                                               self.return_basic(item))
+                to_return[item] = getattr(getattr(self.app, item),
+                                          "__dict__",
+                                          self.return_basic(item))
         return to_return
 
     @property
@@ -282,9 +272,10 @@ class AppInfo(object):
         self.printer.pprint(self.app_information)
 
 
-class RoutesManager(object):
+class Flrm(object):
     def __init__(self):
         self.routes = []
+
 
     def configure_urls(self, app, routes):
         """
@@ -292,7 +283,6 @@ class RoutesManager(object):
         """
         if routes:
             for rule in routes:
-                # Set url rule.
                 self.routes.append(rule)
                 url_rule, endpoint, view_func, opts = self.parse_url_rule(rule)
                 app.add_url_rule(url_rule, endpoint=endpoint, view_func=view_func, **opts)
@@ -304,18 +294,15 @@ class RoutesManager(object):
         """
         length = len(rule)
         if length == 4:
-            # No processing required.
             return rule
         elif length == 3:
             rule = list(rule)
             endpoint = None
             opts = {}
             if isinstance(rule[2], dict):
-                # Options passed.
                 opts = rule[2]
                 view_func = rule[1]
             else:
-                # Endpoint passed.
                 endpoint = rule[1]
                 view_func = rule[2]
             return (rule[0], endpoint, view_func, opts)
@@ -339,19 +326,18 @@ class ExtensionConfig(object):
         by_init: ExtensionObject.init_app(app, *options, **options)
 
     Other extension registration methods should subclass and customize this class.
-
     """
-    def __init__(self, extension_class, init_type='by_class', *args, **kwargs):
+    def __init__(self, extension_class, *args, **kwargs):
         self.extension_class = extension_class
-        self.init_type = init_type
+        self.init_type = kwargs.pop('init_type', 'by_class')
         self.args = args
         self.kwargs = kwargs
 
     def initiate(self, app):
         try:
             return getattr(self, self.init_type, None)(app)
-        except:
-            raise Exception("{}").format(e)
+        except Exception, e:
+            raise
 
     def by_class(self, app):
         return self.extension_class(app, *self.args, **self.kwargs)
@@ -360,7 +346,7 @@ class ExtensionConfig(object):
         return self.extension_class.init_app(app, *self.args, **self.kwargs)
 
     def __repr__(self):
-        return "<ExtensionConfig object: {}, args: {}, kwargs: {}>".format \
-                (getattr(self.extension_class, "__name__", str(self.extension_class)),
+        return "<ExtensionConfig for: ({}, args: {}, kwargs: {})>".format \
+                (self.extension_class,
                  self.args,
                  self.kwargs)
