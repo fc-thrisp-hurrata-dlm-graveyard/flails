@@ -6,7 +6,6 @@ This tests the Flask-Flails extension.
 
 from __future__ import with_statement
 import unittest
-
 import os
 from flask import Flask
 from flask.ext.flails import Flails, ExtensionConfig
@@ -16,6 +15,7 @@ from test_app.blueprints import post
 from flask.ext.gravatar import Gravatar
 from flask.ext.cache import Cache
 
+
 class SetupInstance(unittest.TestCase):
 
     def setUp(self):
@@ -23,8 +23,7 @@ class SetupInstance(unittest.TestCase):
         self.a = self.f.create_app()
         self.flails_instance = flails_instance
         self.test_application = test_application
-        #self.template_path = os.path.join(os.path.dirname(os.path.abspath(DefaultConfig.ROOT_DIR)), 'templates')
-        #self.static_path = os.path.join(os.path.dirname(os.path.abspath(DefaultConfig.ROOT_DIR)), 'static')
+
 
 class FlailsInstantiateCase(SetupInstance):
 
@@ -33,11 +32,13 @@ class FlailsInstantiateCase(SetupInstance):
         with self.assertRaises(Exception):
             Flails('test', NonDefaultConfig)
 
+
 class AppInfoCase(SetupInstance):
 
     def test_app_info(self):
         self.assertIsNotNone(self.f.generated_app_info.app_information)
         self.flails_instance.generated_app_info.formatted
+
 
 class CreateAppCase(SetupInstance):
 
@@ -55,7 +56,7 @@ class ExtensionRegisterCase(SetupInstance):
         self.f = Flails('test_extensions', DefaultConfig)
         self.a = self.f.create_app()
 
-    def test_extension_registered(self):
+    def test_extension_register(self):
         self.assertEqual(self.a.extensions, self.f.generated_app.extensions)
         self.assertIsNotNone(self.a.extensions)
         self.assertIsInstance(self.a.extensions['gravatar'], Gravatar)
@@ -64,11 +65,14 @@ class ExtensionRegisterCase(SetupInstance):
 class CreatedAppCase(SetupInstance):
 
     def test_test_application(self):
-        self.assertIsInstance(self.f, Flails)
-        self.assertIsInstance(self.a, Flask)
-        #self.assertEqual(self.a.static_folder, self.static_path)
-        #self.assertEqual(self.a.template_folder, self.template_path)
+        self.assertIsInstance(self.flails_instance, Flails)
+        self.assertIsInstance(self.test_application, Flask)
+        self.g = Flails(app_name='test_application', config_obj=DefaultConfig, requested_info=['jinja_env', 'blueprints', 'asset_env'])
+        self.alternate_test_application = self.g.create_app()
+        self.assertEqual(self.test_application.static_folder, self.alternate_test_application.static_folder)
+        self.assertEqual(self.f.generated_app_info.formatted, self.g.generated_app_info.formatted)
         self.f.generated_app_info.formatted
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -78,6 +82,7 @@ def suite():
     suite.addTest(unittest.makeSuite(ExtensionRegisterCase))
     suite.addTest(unittest.makeSuite(CreatedAppCase))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')
