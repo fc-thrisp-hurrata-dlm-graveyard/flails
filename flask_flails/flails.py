@@ -10,15 +10,19 @@ class Flails(object):
     def __init__(self, app_name=None,
                        config_obj=None,
                        requested_info=None,
-                       do_register_assets=True):
+                       do_register_assets=True,
+                       routes_manager_cls = Flrm,
+                       assets_manager_cls = Flass,
+                       extensions_manager_cls = Flex):
         self.generated_app = None
         self.generated_app_info = None
         self.app_name = app_name
         self.config_obj = self.check_config(config_obj)
         self.app_root = config_obj.ROOT_DIR
-        self.app_routes = Flrm()
-        self.app_assets = Flass()
-        self.app_extensions = Flex()
+        self.app_routes_cls = routes_manager_cls
+        self.app_assets_cls = assets_manager_cls
+        self.app_extensions_cls = extensions_manager_cls
+        self.initialize_managers()
         self.requested_info = requested_info
         self.do_register_assets = do_register_assets
 
@@ -29,6 +33,12 @@ class Flails(object):
             if not hasattr(config_obj, c):
                 raise Exception('Configuration MUST contain or specify in some manner: {}'.format(c))
         return config_obj
+
+
+    def initialize_managers(self):
+        self.app_routes = self.app_routes_cls()
+        self.app_assets = self.app_assets_cls()
+        self.app_extensions = self.app_extensions_cls()
 
 
     def create_app(self, **kwargs):
@@ -109,7 +119,7 @@ class Flails(object):
 
 
     def configure_extensions(self, app, extensions):
-        self.app_extensions.configure_extensions(app, extensions)
+        self.app_extensions.configure_extensions(app, extensions=extensions)
 
 
     def configure_middlewares(self, app, middlewares):

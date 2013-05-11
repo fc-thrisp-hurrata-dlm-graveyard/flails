@@ -2,13 +2,27 @@ class Flex(object):
     """
     Flask extension registration
     """
-    def __init__(self):
-        self.extensions = None
+    def __init__(self, **kwargs):
+        if kwargs:
+            self.initialize_extensions(kwargs)
 
 
-    def configure_extensions(self, app, extensions):
-        self.extensions = extensions
-        for extension in extensions:
+    def initialize_extensions(self, kwargs):
+        self.extensions = kwargs.pop('extensions', None)
+        if self.extensions:
+            for e in self.extensions:
+                if not isinstance(e, ExtensionConfig):
+                    if isinstance(e, dict):
+                        extension_class = e['extension']
+                        args = e['args']
+                        kwargs = e['kwargs']
+                        e = ExtensionConfig(extension_class, *args, **kwargs)
+
+
+    def configure_extensions(self, app, **kwargs):
+        if kwargs:
+            self.initialize_extensions(kwargs)
+        for extension in self.extensions:
             try:
                 extension.initiate(app)
             except Exception as e:
