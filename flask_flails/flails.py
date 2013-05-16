@@ -1,19 +1,22 @@
 import os
-import pprint
 from flask import Flask, Blueprint
 from werkzeug import import_string
 from flrm import Flrm
 from flass import Flass
 from flex import Flex
+from flinf import Flinf
 
 class Flails(object):
     def __init__(self, app_name=None,
                        config_obj=None,
                        requested_info=None,
                        do_register_assets=True,
-                       routes_manager_cls = Flrm,
-                       assets_manager_cls = Flass,
-                       extensions_manager_cls = Flex):
+                       do_parse_static_main=True,
+                       do_exclude_blueprints=None,
+                       routes_manager_cls=Flrm,
+                       assets_manager_cls=Flass,
+                       extensions_manager_cls=Flex,
+                       information_manager_cls=Flinf):
         self.generated_app = None
         self.generated_app_info = None
         self.app_name = app_name
@@ -22,10 +25,12 @@ class Flails(object):
         self.app_routes_cls = routes_manager_cls
         self.app_assets_cls = assets_manager_cls
         self.app_extensions_cls = extensions_manager_cls
-        self.initialize_managers()
+        self.information_manager_cls = information_manager_cls
         self.requested_info = requested_info
         self.do_register_assets = do_register_assets
-
+        self.do_parse_static_main = do_parse_static_main
+        self.do_exclude_blueprints = do_exclude_blueprints
+        self.initialize_managers()
 
     def check_config(self, config_obj):
         check_for = ['ROOT_DIR']
@@ -34,15 +39,14 @@ class Flails(object):
                 raise Exception('Configuration MUST contain or specify in some manner: {}'.format(c))
         return config_obj
 
-
     def initialize_managers(self):
         self.app_routes = self.app_routes_cls()
-        self.app_assets = self.app_assets_cls()
+        self.app_assets = self.app_assets_cls(exclude_blueprints=self.do_exclude_blueprints,
+                                              parse_static_main=self.do_parse_static_main)
         self.app_extensions = self.app_extensions_cls()
-
+        self.app_information = self.information_manager_cls
 
     def create_app(self, **kwargs):
-
         self.create_time_additions('EXTENSIONS', kwargs.pop('extensions', None))
         self.create_time_additions('BLUEPRINTS', kwargs.pop('blueprints', None))
 
@@ -55,7 +59,7 @@ class Flails(object):
                      'template_folder',
                      'instance_path',
                      'instance_relative_config'):
-                setattr(app, k, kwargs.pop(k))
+                setattr(app, k, kwargs.get(k))
 
         self.configure_app(app, kwargs.pop('create_time_settings', None))
 
@@ -87,11 +91,10 @@ class Flails(object):
 
         self.generated_app = app
 
-        setattr(self, 'generated_app_info', Flinf(self.generated_app,
-                                                  self.requested_info))
+        setattr(self, 'generated_app_info', self.app_information(self.generated_app,
+                                                                 self.requested_info))
 
         return self.generated_app
-
 
     def create_time_additions(self, what, to_add):
         if to_add and hasattr(self.config_obj, what):
@@ -102,13 +105,11 @@ class Flails(object):
         else:
             pass
 
-
     def configure_app(self, app, create_time_settings):
         app.config.from_object(self.config_obj)
         if create_time_settings:
             app.config.from_object(create_time_settings)
         app.config.from_envvar("{}_APP_CONFIG".format(self.app_name.upper()), silent=True)
-
 
     def configure_routes(self, app, routes):
         """
@@ -117,10 +118,8 @@ class Flails(object):
         """
         self.app_routes.configure_urls(app, routes)
 
-
     def configure_extensions(self, app, extensions):
         self.app_extensions.configure_extensions(app, extensions=extensions)
-
 
     def configure_middlewares(self, app, middlewares):
         """
@@ -144,20 +143,17 @@ class Flails(object):
                     new_mware = m(app.wsgi_app)
                 app.wsgi_app = new_mware
 
-
     def configure_context_processors(self, app, context_processors):
         """
         Sets app wide context processors.
         """
         app.context_processor(lambda: context_processors)
 
-
     def configure_app_context_processors(self, app, context_processors):
         """
         Sets app wide context processors from a blueprint.
         """
         app.app_context_processor(lambda: context_processors)
-
 
     def configure_template_filters(self, app, template_filters):
         """
@@ -166,14 +162,12 @@ class Flails(object):
         for filter_name, filter_fn in template_filters:
             app.jinja_env.filters[filter_name] = filter_fn
 
-
     def configure_before_handlers(self, app, before_handlers):
         """
         Sets before handlers.
         """
         for before in before_handlers:
             before = app.before_request(before)
-
 
     def configure_before_app_handlers(self, bp, before_handlers):
         """
@@ -182,14 +176,12 @@ class Flails(object):
         for before in before_handlers:
             before = bp.before_app_request(before)
 
-
     def configure_after_handlers(self, app, after_handlers):
         """
         Sets after handlers.
         """
         for after in after_handlers:
             after = app.after_request(after)
-
 
     def configure_after_app_handlers(self, bp, after_handlers):
         """
@@ -198,14 +190,12 @@ class Flails(object):
         for after in after_handlers:
             after = bp.after_app_request(after)
 
-
     def configure_log_handlers(self, app, log_handlers):
         """
         Sets log handlers for the app.
         """
         for handler in log_handlers:
             app.logger.addHandler(handler)
-
 
     def configure_error_handlers(self, app, error_handlers):
         """
@@ -214,7 +204,6 @@ class Flails(object):
         for code, fn in error_handlers:
             fn = app.errorhandler(code)(fn)
 
-
     def configure_app_error_handlers(self, app, error_handlers):
         """
         Sets app wide custom error handlers from a blueprint.
@@ -222,26 +211,31 @@ class Flails(object):
         for code, fn in error_handlers:
             fn = app.app_errorhandler(code)(fn)
 
-
     def configure_blueprints(self, app, blueprints):
         """
         Registers blueprints with the app.
-        If you have a preconfigured/complete blueprint, you can skip most of this by
+        If you have a preconfigured/complete blueprint, you can skip this by
         naming the exportable blueprint as BLUEPRINT
         """
         for blueprint in blueprints:
             url_prefix = None
             if len(blueprint) == 2:
                 blueprint, url_prefix = blueprint
-            blueprint_object = import_string("{}:BLUEPRINT".format(blueprint), silent=True)#seek multiple
+            blueprint_object = import_string("{}:BLUEPRINT".format(blueprint),
+                                             silent=True)
             if not blueprint_object:
-                blueprint_name, blueprint_import_name = blueprint.split('.')[-1], blueprint
-                options = dict(static_folder='static', template_folder='templates')
-                blueprint_object = Blueprint(blueprint_name, blueprint_import_name, **options)
-                blueprint_routes = import_string('{}.urls:routes'.format(blueprint_import_name), silent=True)#seek multiple
+                blueprint_name = blueprint.split('.')[-1]
+                blueprint_import_name = blueprint
+                options = dict(static_folder='static',
+                               template_folder='templates')
+                blueprint_object = Blueprint(blueprint_name,
+                                             blueprint_import_name,
+                                             **options)
+                blueprint_routes = import_string('{}.urls:routes'.format(blueprint_import_name))#silent fail removed for now
                 if blueprint_routes:
                     self.app_routes.routes.extend(blueprint_routes)
-                    self.app_routes.configure_urls(blueprint_object, blueprint_routes)
+                    self.app_routes.configure_urls(blueprint_object,
+                                                   blueprint_routes)
 
                 for fn, values in [(self.configure_before_handlers,
                                     import_string('{}:BEFORE_REQUESTS'.format(blueprint), silent=True)),
@@ -267,57 +261,3 @@ class Flails(object):
                 app.register_blueprint(blueprint_object, url_prefix=url_prefix)
             else:
                 app.register_blueprint(blueprint_object)
-
-
-class Flinf(object):
-    """
-    Information about a generated flask application.
-
-    By default, provides the url map and configuration variables of the generated application.
-
-    To return additional information pass a list to requested.
-    """
-
-    def __init__(self, app, requested=None):
-        self.app = app
-        self.provide_information = ['url_map', 'config_vars']
-        if requested:
-            self.provide_information.extend(requested)
-        self.printer = pprint.PrettyPrinter(indent=4)
-
-
-    @property
-    def config_vars(self):
-        return {k: v for k,v in self.app.config.iteritems()}
-
-
-    @property
-    def url_map(self):
-        return [r for r in self.app.url_map.iter_rules()]
-
-
-    @property
-    def jinja_env(self):
-        return self.app.jinja_env.__dict__
-
-
-    @property
-    def asset_env(self):
-        return self.jinja_env.get('assets_environment').__dict__
-
-
-    def return_basic(self, item):
-        return getattr(self.app, item, None)
-
-
-    @property
-    def app_information(self):
-        to_return  = {}
-        for item in self.provide_information:
-            to_return[item] = getattr(self, item, self.return_basic(item))
-        return to_return
-
-
-    @property
-    def formatted(self):
-        self.printer.pprint(self.app_information)
