@@ -214,8 +214,9 @@ class Flails(object):
     def configure_blueprints(self, app, blueprints):
         """
         Registers blueprints with the app.
-        If you have a preconfigured/complete blueprint, you can skip this by
-        naming the exportable blueprint as BLUEPRINT
+        If you have a preconfigured/complete blueprint, you can skip past most
+        registration steps by naming the exportable blueprint as BLUEPRINT which
+        is simply registered on application without further processing
         """
         for blueprint in blueprints:
             url_prefix = None
