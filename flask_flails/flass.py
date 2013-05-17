@@ -1,5 +1,7 @@
 import glob
 from flask.ext.assets import Environment, Bundle
+from time import time
+import os
 import pprint
 
 class Flass(object):
@@ -16,33 +18,52 @@ class Flass(object):
         if exclude_blueprints:
             self._exclude_blueprints.extend(exclude_blueprints)
 
-    def register_app_env(self, app):
-        if hasattr(app.jinja_env, 'assets_environment'):
-            env = app.jinja_env.assets_environment
-        else:
-            env = Environment(app)
+    def set_env(self):
+        #provide support for configuration of the environment
+        self.app_asset_env = Environment()
 
-        self.app_asset_env = env
-        return env
+    def register_env(self, app):
+        env = self.app_asset_env
+        env.init_app(app)
+
+    def register_env_fleem(self, app):
+        app.extensions['fleem_manager'].asset_env = app.jinja_env.assets_environment
+        app.extensions['fleem_manager'].refresh()
+
+    def manifest(self, where, name, extension, resources):
+        filename = "{}.manifest".format(name)
+        entry = "{} for {} == {}".format(extension,
+                                         name,
+                                         resources)
+
+        try:
+            f = open(os.path.join(where, filename), 'a')
+        except:
+            f = open(os.path.join(os.getcwd(), filename), 'a')
+
+        f.write("{}:: {}\n".format(time(), entry))
 
     def register_assets(self, app):
         """
         Registers all css and js assets with application
         """
-        if self.app_asset_env is None:
-            self.register_app_env(app)
 
-        asset_env = self.app_asset_env
+        self.register_env(app)
+
+        if app.extensions.get('fleem_manager'):
+            self.register_env_fleem(app)
+
+        asset_env = app.jinja_env.assets_environment
 
         static_folder = app.static_folder
 
         css_files, less_files, js_files, coffee_files = [],[],[],[]
 
         if self.parse_static_main:
-            css_files.extend(self._get_css_files(static_folder))
-            less_files.extend(self._get_less_files(static_folder))
-            js_files.extend(self._get_js_files(static_folder))
-            coffee_files.extend(self._get_coffee_files(static_folder))
+            css_files.extend(self._get_css(static_folder))
+            less_files.extend(self._get_less(static_folder))
+            js_files.extend(self._get_js(static_folder))
+            coffee_files.extend(self._get_coffee(static_folder))
 
         if app.blueprints:
             blueprints = {name: bp for name,bp in app.blueprints.iteritems()\
@@ -50,14 +71,14 @@ class Flass(object):
 
             for name, bp in blueprints.iteritems():
                 if bp.static_folder:
-                    css_files.extend(self._append_blueprint_name(name,
-                                                                self._get_css_files(bp.static_folder)))
-                    less_files.extend(self._append_blueprint_name(name,
-                                                                self._get_less_files(bp.static_folder)))
-                    js_files.extend(self._append_blueprint_name(name,
-                                                                self._get_js_files(bp.static_folder)))
-                    coffee_files.extend(self._append_blueprint_name(name,
-                                                                    self._get_coffee_files(bp.static_folder)))
+                    css_files.extend(self._append_bp_name(name,
+                                                          self._get_css(bp.static_folder)))
+                    less_files.extend(self._append_bp_name(name,
+                                                           self._get_less(bp.static_folder)))
+                    js_files.extend(self._append_bp_name(name,
+                                                         self._get_js(bp.static_folder)))
+                    coffee_files.extend(self._append_bp_name(name,
+                                                             self._get_coffee(bp.static_folder)))
 
         js_contents = []
         if js_files:
@@ -76,6 +97,10 @@ class Flass(object):
                                js_all, filters='gzip',
                                output='js/application.js.gz')
         self.js_content = js_contents
+        self.manifest(static_folder,
+                      "js_all",
+                      ".js",
+                      [x.contents for x in js_contents])
 
         css_contents = []
         if css_files:
@@ -95,6 +120,10 @@ class Flass(object):
                                css_all, filters='gzip',
                                output='css/application.css.gz')
         self.css_content = css_contents
+        self.manifest(static_folder,
+                      "css_all",
+                      ".css",
+                      [x.contents for x in css_contents])
 
     def _get_resource_files(self,
                             static_folder,
@@ -105,17 +134,17 @@ class Flass(object):
                                               resource_folder,
                                               resource_ext))]
 
-    def _get_css_files(self, static_folder):
+    def _get_css(self, static_folder):
         return self._get_resource_files(static_folder, 'css', 'css')
 
-    def _get_less_files(self, static_folder):
+    def _get_less(self, static_folder):
         return self._get_resource_files(static_folder, 'css', 'less')
 
-    def _get_js_files(self, static_folder):
+    def _get_js(self, static_folder):
         return self._get_resource_files(static_folder, 'js', 'js')
 
-    def _get_coffee_files(self, static_folder):
+    def _get_coffee(self, static_folder):
         return self._get_resource_files(static_folder, 'js', 'coffee')
 
-    def _append_blueprint_name(self, name, files):
+    def _append_bp_name(self, name, files):
         return ['{}/{}'.format(name, f) for f in files]

@@ -52,6 +52,8 @@ class Flails(object):
 
         app = Flask(self.app_name)
 
+        self.app_assets.set_env()
+
         for k in kwargs:
             if k in ('import_name',
                      'static_url_path',
