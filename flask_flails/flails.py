@@ -80,7 +80,7 @@ class Flails(object):
         self.configure_extensions(app, self.app_config)
 
         for k,v in self.app_registrations.app_actions.iteritems():
-            action = getattr(self.app_config, k.capitalize(), None)
+            action = getattr(self.app_config, k.upper(), None)
             fn, values = v, action
             if values:
                 fn(blueprint_object, values)
