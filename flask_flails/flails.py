@@ -41,6 +41,7 @@ class Flails(object):
         self.initialize_managers()
 
     def check_config(self, app_config, app_config_requires):
+        """Forces a check on your configuration file"""
         if app_config_requires is not None:
             for c in app_config_requires:
                 if not hasattr(app_config, c):
