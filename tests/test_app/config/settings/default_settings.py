@@ -65,7 +65,8 @@ class DefaultConfig(BaseConfig, BlueprintConfig, UrlConfig):
         (500, lambda error: (render_template("errors/server_error.html"), 500))
     ]
 
-    EXTENSIONS = [ExtensionConfig(Macro4), ExtensionConfig(Misaka)]
+    EXTENSIONS = [ExtensionConfig(Macro4, precedence=1000),
+                  ExtensionConfig(Misaka, precedence=1)]
 
 class NonDefaultConfig(BaseConfig, BlueprintConfig):
 

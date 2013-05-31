@@ -9,7 +9,8 @@ class Flinf(object):
     To return additional information pass a list to requested.
     """
 
-    def __init__(self, app, requested=None):
+    def __init__(self, flail, app=None, requested=None):
+        self.flail = flail
         self.app = app
         self.provide_information = ['url_map', 'config_vars']
         if requested:

@@ -1,14 +1,29 @@
+import re
+from operator import attrgetter
+
+MATCH_EXTENSION = re.compile(".*_EXTENSION\Z")
+
 class Flex(object):
     """
     Flask extension registration
     """
-    def __init__(self, **kwargs):
+    def __init__(self, flail, **kwargs):
+        self.flail = flail
         if kwargs:
             self.initialize_extensions(kwargs)
 
+    def extend_extensions(self, app_config):
+        other_extensions = (x for x in dir(app_config)
+                            if not x.startswith('_')
+                            and MATCH_EXTENSION.match(x))
+        for oe in other_extensions:
+            app_config.EXTENSIONS.append(getattr(app_config, oe))
 
-    def initialize_extensions(self, kwargs):
-        self.extensions = kwargs.pop('extensions', None)
+    def order_extensions(self, extensions):
+        return sorted(extensions, key=attrgetter('precedence'))
+
+    def initialize_extensions(self, extensions):
+        self.extensions = extensions
         if self.extensions:
             for e in self.extensions:
                 if not isinstance(e, ExtensionConfig):
@@ -18,10 +33,11 @@ class Flex(object):
                         kwargs = e['kwargs']
                         e = ExtensionConfig(extension_class, *args, **kwargs)
 
-
-    def configure_extensions(self, app, **kwargs):
-        if kwargs:
-            self.initialize_extensions(kwargs)
+    def configure_extensions(self, app, app_config):
+        self.extend_extensions(app_config)
+        extensions = self.order_extensions(app_config.EXTENSIONS)
+        if extensions:
+            self.initialize_extensions(extensions)
         for extension in self.extensions:
             try:
                 extension.initiate(app)
@@ -31,24 +47,31 @@ class Flex(object):
 
 class ExtensionConfig(object):
     """
-    A wrapper for extension registry
+    A configuration wrapper for extension registry.
 
-    defaults to to registering an extension to the app provided by:
+    :param init_type: How the extension will be registeres defaults to
+                      'by_class' which registers the extension by:
 
-        by_class: ExtensionObject(app, *options, **options)
+                      ExtensionToBeRegistered(app, *options, **options)
 
-    alternately
+                      by_init registers the extension (Usually a preconfigured
+                      instance) by an init_app method:
 
-        by_init: ExtensionObject.init_app(app, *options, **options)
+                      ExtensionToBeRegistered.init_app(app, *options, **options)
 
-    Other extension registration methods should subclass and customize this class.
+    :param precedence: You can gain control over ordering of extension
+                       intialization where order is needed by optionally
+                       setting precedence as an integer, default is 100.
+
+    Other extension registration methods should subclass and customize this
+    class.
     """
     def __init__(self, extension_class, *args, **kwargs):
         self.extension_class = extension_class
         self.init_type = kwargs.pop('init_type', 'by_class')
+        self.precedence = kwargs.pop('precedence', 100)
         self.args = args
         self.kwargs = kwargs
-
 
     def initiate(self, app):
         try:
@@ -56,17 +79,16 @@ class ExtensionConfig(object):
         except Exception, e:
             raise
 
-
     def by_class(self, app):
         return self.extension_class(app, *self.args, **self.kwargs)
-
 
     def by_init(self, app):
         return self.extension_class.init_app(app, *self.args, **self.kwargs)
 
-
     def __repr__(self):
-        return "<ExtensionConfig for: ({}, args: {}, kwargs: {})>".format \
+        return "<ExtensionConfig for: ({}, args: {}, kwargs: {}, precedence: {})>"\
+                .format\
                 (self.extension_class,
                  self.args,
-                 self.kwargs)
+                 self.kwargs,
+                 self.precedence)

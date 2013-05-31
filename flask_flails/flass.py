@@ -8,8 +8,10 @@ class Flass(object):
     """
     Flask asset registration
     """
-    def __init__(self, parse_static_main=True,
+    def __init__(self, flail,
+                       parse_static_main=True,
                        exclude_blueprints=None):
+        self.flail = flail
         self.app_asset_env = None
         self.js_content = None
         self.css_content = None
@@ -19,7 +21,9 @@ class Flass(object):
             self._exclude_blueprints.extend(exclude_blueprints)
 
     def set_env(self):
-        #provide support for configuration of the environment
+        # provide support for configuration of the environment
+        # as well as get env in sync with other extensions
+        # using env
         self.app_asset_env = Environment()
 
     def register_env(self, app):
@@ -38,10 +42,13 @@ class Flass(object):
 
         try:
             f = open(os.path.join(where, filename), 'a')
+            f.write("{}:: {}\n".format(time(), entry))
         except:
             f = open(os.path.join(os.getcwd(), filename), 'a')
-
-        f.write("{}:: {}\n".format(time(), entry))
+            #pprint.pprint(os.path.join(where, filename))
+            #pprint.pprint(os.path.join(os.getcwd(), filename))
+            #pprint.pprint(entry)
+            f.write("{}:: {}\n".format(time(), entry))
 
     def register_assets(self, app):
         """
