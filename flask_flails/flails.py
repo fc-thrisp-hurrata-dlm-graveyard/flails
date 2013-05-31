@@ -1,12 +1,10 @@
-import os
-from itertools import chain
 from flask import Flask, Blueprint
 from werkzeug import import_string
 from flass import Flass
 from flex import Flex
 from flinf import Flinf
 from flab import Flab
-from flap import CommonRegister
+from flap import Flap
 from flask.ext.classy import FlaskView as FlailsView
 
 class FlailsException(Exception):
@@ -21,7 +19,7 @@ class Flails(object):
                        do_register_assets=True,
                        do_parse_static_main=True,
                        do_exclude_blueprints=None,
-                       registration_manager_cls=CommonRegister,
+                       registration_manager_cls=Flap,
                        blueprints_manager_cls=Flab,
                        assets_manager_cls=Flass,
                        extensions_manager_cls=Flex,

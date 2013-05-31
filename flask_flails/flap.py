@@ -1,6 +1,6 @@
 #from flask.ext.classy import FlaskView as FlailsView
 
-class CommonRegister(object):
+class Flap(object):
     """
     Common registration methods for applications & blueprints
     """
@@ -80,10 +80,10 @@ class CommonRegister(object):
 
     def configure_views(self, app, views):
         for v in views:
-            try:
-                getattr(v, 'register')(app)
-            except:
-                pass
+            #try:
+            getattr(v, 'register')(app)
+            #except:
+            #    pass
 
     def configure_middlewares(self, app, middlewares):
         """
