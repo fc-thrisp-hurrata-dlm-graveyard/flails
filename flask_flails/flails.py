@@ -83,7 +83,7 @@ class Flails(object):
             action = getattr(self.app_config, k.upper(), None)
             fn, values = v, action
             if values:
-                fn(blueprint_object, values)
+                fn(app, values)
 
         self.configure_blueprints(app, getattr(self.app_config, 'BLUEPRINTS', None))
 
