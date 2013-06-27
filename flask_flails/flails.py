@@ -1,31 +1,32 @@
-from flask import Flask, Blueprint
-from werkzeug import import_string
+from flask import Flask
 from .flass import Flass
 from .flex import Flex
 from .flinf import Flinf
 from .flab import Flab
 from .flap import Flap
-from flask.ext.classy import FlaskView as FlailsView
 from .flog import flails_logger
 from .signals import app_created_successfully
+
 
 class FlailsException(Exception):
     pass
 
+
 class Flails(object):
-    def __init__(self, app_name=__name__,
-                       app_config=None,
-                       app_config_requires=None,
-                       app_inside_module=None,
-                       requested_info=None,
-                       do_register_assets=True,
-                       do_parse_static_main=True,
-                       do_exclude_blueprints=None,
-                       registration_manager_cls=Flap,
-                       blueprints_manager_cls=Flab,
-                       assets_manager_cls=Flass,
-                       extensions_manager_cls=Flex,
-                       information_manager_cls=Flinf):
+    def __init__(self,
+                 app_name=__name__,
+                 app_config=None,
+                 app_config_requires=None,
+                 app_inside_module=None,
+                 requested_info=None,
+                 do_register_assets=True,
+                 do_parse_static_main=True,
+                 do_exclude_blueprints=None,
+                 registration_manager_cls=Flap,
+                 blueprints_manager_cls=Flab,
+                 assets_manager_cls=Flass,
+                 extensions_manager_cls=Flex,
+                 information_manager_cls=Flinf):
         self.generated_app = None
         self.generated_app_info = None
         self.app_name = app_name
@@ -60,8 +61,10 @@ class Flails(object):
         self.app_blueprints = self.app_blueprints_cls(self)
 
     def create_app(self, **kwargs):
-        self.create_time_additions('EXTENSIONS', kwargs.pop('extensions', None))
-        self.create_time_additions('BLUEPRINTS', kwargs.pop('blueprints', None))
+        self.create_time_additions('EXTENSIONS',
+                                   kwargs.pop('extensions', None))
+        self.create_time_additions('BLUEPRINTS',
+                                   kwargs.pop('blueprints', None))
 
         app = Flask(self.app_name)
 
@@ -82,27 +85,31 @@ class Flails(object):
 
         self.configure_extensions(app, self.app_config)
 
-        for k,v in self.app_registrations.app_actions.items():
+        for k, v in self.app_registrations.app_actions.items():
             action = getattr(self.app_config, k.upper(), None)
             fn, values = v, action
             if values:
                 fn(app, values)
 
-        self.configure_blueprints(app, getattr(self.app_config, 'BLUEPRINTS', None))
+        self.configure_blueprints(app,
+                                  getattr(self.app_config,
+                                          'BLUEPRINTS',
+                                          None))
 
         if self.do_register_assets:
             self.app_assets.register_assets(app)
 
         self.generated_app = app
         app_created_successfully.send(self)
-        flails_logger.info("Application {!r} successfully generated".format(self.generated_app))
+        flails_logger.info("""
+                           Application {!r} successfully generated
+                           """.format(self.generated_app))
 
         setattr(self,
                 'generated_app_info',
                 self.app_information(self,
                                      self.generated_app,
                                      self.requested_info))
-
 
         return self.generated_app
 
@@ -120,7 +127,7 @@ class Flails(object):
         if create_time_settings:
             app.config.from_object(create_time_settings)
         app.config.from_envvar("{}_APP_CONFIG".format(self.app_name.upper()),
-                                                      silent=True)
+                               silent=True)
 
     def configure_extensions(self, app, app_config):
         self.app_extensions.configure_extensions(app, app_config)

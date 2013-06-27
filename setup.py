@@ -1,23 +1,20 @@
 """
-
 Flails
 ------------
 
-"Flask is really not at all like Ruby-on-Rails but sometimes you need
-an app factory and some configuration conventions"
+Flask application factory patterns.
 
-Flails provides some basics for generating a flask application
-from a specific configuration
+Flails provides some basics for generating a flask application from a specific
+configuration.
 
 
 Links
 `````
 * `documentation <http://packages.python.org/>`_
 * `development version
-  <http://>`_
+  <http://github.com/thrisp/flails>`_
 
 """
-from flask_flails import __version__
 from setuptools import setup
 
 requires = ['Flask>=0.9',
@@ -26,7 +23,7 @@ requires = ['Flask>=0.9',
 
 setup(
     name='Flask-Flails',
-    version=__version__,
+    version='0',
     url='http://',
     license='MIT',
     author='thrisp/hurrata',
