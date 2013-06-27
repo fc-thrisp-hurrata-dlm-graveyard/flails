@@ -19,22 +19,22 @@ Links
 """
 from flask_flails import __version__
 from setuptools import setup
-import sys
 
-requires = ['Flask>=0.9']
-if sys.version_info < (2, 6):
-    requires.append('simplejson')
+requires = ['Flask>=0.9',
+            'Flask-Classy>=0.5.2',
+            'Flask-Assets>=0.8']
 
 setup(
     name='Flask-Flails',
     version=__version__,
     url='http://',
-    license='BSD',
+    license='MIT',
     author='thrisp/hurrata',
     author_email='blueblank@gmail.com',
     description='Flask application factory',
     long_description=__doc__,
     packages=['flask_flails'],
+    test_suite="test",
     zip_safe=False,
     platforms='any',
     install_requires=requires,

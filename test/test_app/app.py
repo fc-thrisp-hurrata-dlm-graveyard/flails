@@ -1,5 +1,5 @@
 from flask.ext.flails import Flails
-from config.settings.default_settings import DefaultConfig
+from .config.settings.default_settings import DefaultConfig
 import os
 
 local_path = os.path.dirname(__file__)

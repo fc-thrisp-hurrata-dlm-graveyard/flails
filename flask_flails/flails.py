@@ -1,11 +1,13 @@
 from flask import Flask, Blueprint
 from werkzeug import import_string
-from flass import Flass
-from flex import Flex
-from flinf import Flinf
-from flab import Flab
-from flap import Flap
+from .flass import Flass
+from .flex import Flex
+from .flinf import Flinf
+from .flab import Flab
+from .flap import Flap
 from flask.ext.classy import FlaskView as FlailsView
+from .flog import flails_logger
+from .signals import app_created_successfully
 
 class FlailsException(Exception):
     pass
@@ -80,7 +82,7 @@ class Flails(object):
 
         self.configure_extensions(app, self.app_config)
 
-        for k,v in self.app_registrations.app_actions.iteritems():
+        for k,v in self.app_registrations.app_actions.items():
             action = getattr(self.app_config, k.upper(), None)
             fn, values = v, action
             if values:
@@ -92,12 +94,15 @@ class Flails(object):
             self.app_assets.register_assets(app)
 
         self.generated_app = app
+        app_created_successfully.send(self)
+        flails_logger.info("Application {!r} successfully generated".format(self.generated_app))
 
         setattr(self,
                 'generated_app_info',
                 self.app_information(self,
                                      self.generated_app,
                                      self.requested_info))
+
 
         return self.generated_app
 

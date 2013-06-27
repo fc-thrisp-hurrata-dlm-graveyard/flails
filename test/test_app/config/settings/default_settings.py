@@ -1,10 +1,11 @@
 #site
 from flask import render_template
 from os import path, urandom
-from url_settings import UrlConfig
-from blueprint_settings import BlueprintConfig
+from .url_settings import UrlConfig
+from .blueprint_settings import BlueprintConfig
 from flask.ext.macro4 import Macro4
-from flask.ext.misaka import Misaka
+#from flask.ext.misaka import Misaka
+from flask.ext.gravatar import Gravatar
 from flask.ext.flails import ExtensionConfig
 
 PROJECT = "test_app"
@@ -66,7 +67,7 @@ class DefaultConfig(BaseConfig, BlueprintConfig, UrlConfig):
     ]
 
     EXTENSIONS = [ExtensionConfig(Macro4, precedence=1000),
-                  ExtensionConfig(Misaka, precedence=1)]
+                  ExtensionConfig(Gravatar, precedence=1)]
 
 class NonDefaultConfig(BaseConfig, BlueprintConfig):
 

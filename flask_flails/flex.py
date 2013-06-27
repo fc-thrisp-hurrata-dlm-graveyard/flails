@@ -76,7 +76,7 @@ class ExtensionConfig(object):
     def initiate(self, app):
         try:
             return getattr(self, self.init_type, None)(app)
-        except Exception, e:
+        except Exception as e:
             raise
 
     def by_class(self, app):

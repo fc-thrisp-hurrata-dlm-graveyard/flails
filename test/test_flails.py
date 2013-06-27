@@ -32,7 +32,7 @@ class FlailsInstantiateCase(SetupInstance):
 class AppInfoCase(SetupInstance):
     def test_app_info(self):
         self.assertIsNotNone(self.f.generated_app_info.app_information)
-        self.flails_instance.generated_app_info.formatted
+        #self.flails_instance.generated_app_info.info_dump_applog
 
 
 class CreateAppCase(SetupInstance):
@@ -73,8 +73,8 @@ class CreatedAppCase(SetupInstance):
                                         'blueprints',
                                         'asset_env'])
         self.alternate_test_application = self.g.create_app()
-        self.assertEqual(self.f.generated_app_info.formatted,
-                         self.g.generated_app_info.formatted)
+        self.assertEqual(self.f.generated_app_info.info_dump_out,
+                         self.g.generated_app_info.info_dump_out)
 
 
 class GeneratedAssetsCase(SetupInstance):

@@ -2,7 +2,6 @@ import glob
 from flask.ext.assets import Environment, Bundle
 from time import time
 import os
-import pprint
 
 class Flass(object):
     """
@@ -10,7 +9,8 @@ class Flass(object):
     """
     def __init__(self, flail,
                        parse_static_main=True,
-                       exclude_blueprints=None):
+                       exclude_blueprints=None,
+                       write_manifests=False):
         self.flail = flail
         self.app_asset_env = None
         self.js_content = None
@@ -19,6 +19,7 @@ class Flass(object):
         self._exclude_blueprints = ['debugtoolbar', '_uploads', '_themes']
         if exclude_blueprints:
             self._exclude_blueprints.extend(exclude_blueprints)
+        self.write_manifests = write_manifests
 
     def set_env(self):
         # provide support for configuration of the environment
@@ -45,9 +46,6 @@ class Flass(object):
             f.write("{}:: {}\n".format(time(), entry))
         except:
             f = open(os.path.join(os.getcwd(), filename), 'a')
-            #pprint.pprint(os.path.join(where, filename))
-            #pprint.pprint(os.path.join(os.getcwd(), filename))
-            #pprint.pprint(entry)
             f.write("{}:: {}\n".format(time(), entry))
 
     def register_assets(self, app):
@@ -73,10 +71,10 @@ class Flass(object):
             coffee_files.extend(self._get_coffee(static_folder))
 
         if app.blueprints:
-            blueprints = {name: bp for name,bp in app.blueprints.iteritems()\
+            blueprints = {name: bp for name,bp in app.blueprints.items()\
                           if name not in self._exclude_blueprints}
 
-            for name, bp in blueprints.iteritems():
+            for name, bp in blueprints.items():
                 if bp.static_folder:
                     css_files.extend(self._append_bp_name(name,
                                                           self._get_css(bp.static_folder)))
@@ -100,14 +98,12 @@ class Flass(object):
                             output='js/application.js')
             asset_env.register('js_all',
                                js_all)
-            asset_env.register('js_all_compressed',
-                               js_all, filters='gzip',
-                               output='js/application.js.gz')
         self.js_content = js_contents
-        self.manifest(static_folder,
-                      "js_all",
-                      ".js",
-                      [x.contents for x in js_contents])
+        if self.write_manifests:
+            self.manifest(static_folder,
+                          "js_all",
+                          ".js",
+                          [x.contents for x in js_contents])
 
         css_contents = []
         if css_files:
@@ -123,14 +119,12 @@ class Flass(object):
                              output='css/application.css')
             asset_env.register('css_all',
                                css_all)
-            asset_env.register('css_all_compressed',
-                               css_all, filters='gzip',
-                               output='css/application.css.gz')
         self.css_content = css_contents
-        self.manifest(static_folder,
-                      "css_all",
-                      ".css",
-                      [x.contents for x in css_contents])
+        if self.write_manifests:
+            self.manifest(static_folder,
+                          "css_all",
+                          ".css",
+                          [x.contents for x in css_contents])
 
     def _get_resource_files(self,
                             static_folder,

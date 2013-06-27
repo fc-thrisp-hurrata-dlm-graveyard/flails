@@ -1,5 +1,3 @@
-#from flask.ext.classy import FlaskView as FlailsView
-
 class Flap(object):
     """
     Common registration methods for applications & blueprints
@@ -75,15 +73,12 @@ class Flap(object):
         for code, fn in error_handlers:
             fn = app.app_errorhandler(code)(fn)
 
-    #def check_views(self, views):
-    #    return {k: v for k,v in views if v in FlailsView.__subclasses__()}
-
     def configure_views(self, app, views):
         for v in views:
-            #try:
-            getattr(v, 'register')(app)
-            #except:
-            #    pass
+            try:
+                getattr(v, 'register')(app)
+            except Exception as e:
+                Exception(e)
 
     def configure_middlewares(self, app, middlewares):
         """

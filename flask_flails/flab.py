@@ -63,7 +63,7 @@ class Flab(object):
         return Blueprint(blueprint_name, blueprint_import_name, **options)
 
     def register_blueprint_actions(self, blueprint, blueprint_object):
-        for k,v in self.registrations.iteritems():
+        for k,v in self.registrations.items():
             action = '{}:{}'.format(blueprint, k.upper())
             fn, values = v, import_string(action, silent=True)
             if values:
