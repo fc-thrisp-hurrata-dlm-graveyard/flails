@@ -4,7 +4,7 @@ from .flex import Flex
 from .flinf import Flinf
 from .flab import Flab
 from .flap import Flap
-from .flog import flails_logger
+from .flog import flails_logger as _flog
 from .signals import app_created_successfully
 
 
@@ -101,9 +101,9 @@ class Flails(object):
 
         self.generated_app = app
         app_created_successfully.send(self)
-        flails_logger.info("""
-                           Application {!r} successfully generated
-                           """.format(self.generated_app))
+        _flog.info("""
+                   Application {!r} successfully generated
+                   """.format(self.generated_app))
 
         setattr(self,
                 'generated_app_info',

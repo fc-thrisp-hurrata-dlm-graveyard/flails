@@ -30,7 +30,7 @@ class Flab(object):
 
         before_requests, before_app_requests, after_requests,
         after_app_requests, context_processors, app_context_processors,
-        error_handlers, app_error_handlers, view_handlers, jinja_globals
+        error_handlers, app_error_handlers, view_handlers
 
         in the __init__ file as ALL_CAP constants.
         """

@@ -17,8 +17,8 @@ class Flap(object):
         """
         app.app_context_processor(lambda: context_processors)
 
-    def configure_jinja_global(self, app, jinja_globals):
-        for k, v in jinja_globals:
+    def configure_jinja_globals(self, app, jinja_globals):
+        for k, v in jinja_globals.items():
             app.jinja_env.globals[k] = v
 
     def configure_template_filters(self, app, template_filters):
@@ -125,7 +125,6 @@ class Flap(object):
                 'after_app_requests': self.configure_after_app_handlers,
                 'context_processors': self.configure_context_processors,
                 'app_context_processors': self.configure_app_context_processors,
-                'jinja_globals': self.configure_jinja_globals,
                 'error_handlers': self.configure_error_handlers,
                 'app_error_handlers': self.configure_app_error_handlers,
                 'view_handlers': self.configure_views}
