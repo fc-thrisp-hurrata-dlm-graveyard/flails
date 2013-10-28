@@ -53,19 +53,18 @@ class Flex(object):
         ordered = self.order_extensions(wrapped)
         [self.configure_extension(app, extension) for extension in ordered]
         self.extensions = ordered
-        print self.extensions
 
 
 class ExtensionConfig(object):
     """
     A configuration wrapper for extension registry.
 
-    :param init_type: How the extension will be registeres defaults to
+    :param init_type: How the extension will be registered defaults to
                       'by_class' which registers the extension by:
 
                       ExtensionToBeRegistered(app, *options, **options)
 
-                      by_init registers the extension (Usually a preconfigured
+                      'by_init' registers the extension (Usually a preconfigured
                       instance) by an init_app method:
 
                       ExtensionToBeRegistered.init_app(app, *options, **options)
@@ -86,7 +85,6 @@ class ExtensionConfig(object):
 
     def initiate(self, app):
         try:
-            print "initiating....{}".format(self)
             return getattr(self, self.init_type, None)(app)
         except Exception as e:
             raise e
