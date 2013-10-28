@@ -14,7 +14,8 @@ class TestConfig(object):
     TEMPLATE_FILTERS = []
     CONTEXT_PROCESSORS = {}
     ERROR_HANDLERS = []
-    EXTENSIONS = [ExtensionConfig(Gravatar, size=100, rating='g', precedence=1),
+    EXTENSIONS = [{'extension': Gravatar, 'size':100, 'rating':'g', 'precedence':1},
+                  #ExtensionConfig(Gravatar, size=100, rating='g', precedence=1),
                   ExtensionConfig(cache, init_type='by_init', precedence=1000)]
 
 

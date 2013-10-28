@@ -19,9 +19,10 @@ class Flails(object):
                  app_config_requires=None,
                  app_inside_module=None,
                  requested_info=None,
-                 do_register_assets=True,
-                 do_parse_static_main=True,
-                 do_exclude_blueprints=None,
+                 assets_do_register=True,
+                 assets_do_parse_static=True,
+                 assets_do_exclude_blueprints=None,
+                 assets_do_write_manifests=False,
                  registration_manager_cls=Flap,
                  blueprints_manager_cls=Flab,
                  assets_manager_cls=Flass,
@@ -38,9 +39,10 @@ class Flails(object):
         self.app_extensions_cls = extensions_manager_cls
         self.app_information_cls = information_manager_cls
         self.requested_info = requested_info
-        self.do_register_assets = do_register_assets
-        self.do_parse_static_main = do_parse_static_main
-        self.do_exclude_blueprints = do_exclude_blueprints
+        self.assets_do_register = assets_do_register
+        self.assets_do_parse_static = assets_do_parse_static
+        self.assets_do_exclude_blueprints = assets_do_exclude_blueprints
+        self.assets_do_write_manifests = assets_do_write_manifests
         self.initialize_managers()
 
     def check_config(self, app_config, app_config_requires):
@@ -54,8 +56,9 @@ class Flails(object):
     def initialize_managers(self):
         self.app_registrations = self.app_registrations_cls(self)
         self.app_assets = self.app_assets_cls(self,
-                                              exclude_blueprints=self.do_exclude_blueprints,
-                                              parse_static_main=self.do_parse_static_main)
+                                              exclude_blueprints=self.assets_do_exclude_blueprints,
+                                              parse_static_main=self.assets_do_parse_static,
+                                              write_manifests=self.assets_do_write_manifests)
         self.app_extensions = self.app_extensions_cls(self)
         self.app_information = self.app_information_cls
         self.app_blueprints = self.app_blueprints_cls(self)
@@ -67,8 +70,6 @@ class Flails(object):
                                    kwargs.pop('blueprints', None))
 
         app = Flask(self.app_name)
-
-        self.app_assets.set_env()
 
         for k in kwargs:
             if k in ('import_name',
@@ -91,25 +92,18 @@ class Flails(object):
             if values:
                 fn(app, values)
 
-        self.configure_blueprints(app,
-                                  getattr(self.app_config,
-                                          'BLUEPRINTS',
-                                          None))
+        self.configure_blueprints(app, getattr(self.app_config, 'BLUEPRINTS', None))
 
-        if self.do_register_assets:
+        if self.assets_do_register:
+            self.app_assets.set_env()
             self.app_assets.register_assets(app)
 
         self.generated_app = app
-        app_created_successfully.send(self)
-        _flog.info("""
-                   Application {!r} successfully generated
-                   """.format(self.generated_app))
 
-        setattr(self,
-                'generated_app_info',
-                self.app_information(self,
-                                     self.generated_app,
-                                     self.requested_info))
+        app_created_successfully.send(self)
+        _flog.info("Application {!r} successfully generated".format(self.generated_app))
+
+        setattr(self, 'generated_app_info', self.app_information(self, self.generated_app, self.requested_info))
 
         return self.generated_app
 

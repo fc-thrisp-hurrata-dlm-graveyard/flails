@@ -1,5 +1,6 @@
 import re
 from operator import attrgetter
+from copy import copy
 
 MATCH_EXTENSION = re.compile(".*_EXTENSION\Z")
 
@@ -9,40 +10,47 @@ class Flex(object):
     """
     def __init__(self, flail, **kwargs):
         self.flail = flail
-        if kwargs:
-            self.initialize_extensions(kwargs)
+
+    def gather_extensions(self, app_config):
+        return [v for k,v in app_config.__dict__.items()
+                if MATCH_EXTENSION.match(k)]
 
     def extend_extensions(self, app_config):
-        other_extensions = (x for x in dir(app_config)
-                            if not x.startswith('_')
-                            and MATCH_EXTENSION.match(x))
-        for oe in other_extensions:
-            app_config.EXTENSIONS.append(getattr(app_config, oe))
+        e = app_config.EXTENSIONS
+        [e.append(oe) for oe in self.gather_extensions(app_config)]
+        return e
 
     def order_extensions(self, extensions):
         return sorted(extensions, key=attrgetter('precedence'))
 
-    def initialize_extensions(self, extensions):
-        self.extensions = extensions
-        if self.extensions:
-            for e in self.extensions:
-                if not isinstance(e, ExtensionConfig):
-                    if isinstance(e, dict):
-                        extension_class = e['extension']
-                        args = e['args']
-                        kwargs = e['kwargs']
-                        e = ExtensionConfig(extension_class, *args, **kwargs)
+    def wrap_extension(self, e):
+        if isinstance(e, dict):
+            f = copy(e)
+            extension_class = f.pop('extension', None)
+            args = f.pop('args', None)
+            kwargs = f
+            if args:
+                return ExtensionConfig(extension_class, *args, **kwargs)
+            else:
+                return ExtensionConfig(extension_class, **kwargs)
+        else:
+            return e
+
+    def wrap_extensions(self, extensions):
+        return [self.wrap_extension(e) for e in extensions]
+
+    def configure_extension(self, app, extension):
+        try:
+            extension.initiate(app)
+        except Exception as e:
+            raise e
 
     def configure_extensions(self, app, app_config):
-        self.extend_extensions(app_config)
-        extensions = self.order_extensions(app_config.EXTENSIONS)
-        if extensions:
-            self.initialize_extensions(extensions)
-        for extension in self.extensions:
-            try:
-                extension.initiate(app)
-            except Exception as e:
-               raise e
+        exts = self.extend_extensions(app_config)
+        wrapped = self.wrap_extensions(exts)
+        ordered = self.order_extensions(wrapped)
+        [self.configure_extension(app, extension) for extension in ordered]
+        self.extensions = ordered
 
 
 class ExtensionConfig(object):
