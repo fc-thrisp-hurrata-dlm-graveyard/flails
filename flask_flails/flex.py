@@ -1,6 +1,7 @@
 import re
 from operator import attrgetter
 from copy import copy
+import inspect
 
 MATCH_EXTENSION = re.compile(".*_EXTENSION\Z")
 
@@ -8,12 +9,12 @@ class Flex(object):
     """
     Flask extension registration
     """
-    def __init__(self, flail, **kwargs):
+    def __init__(self, flail):
         self.flail = flail
 
     def gather_extensions(self, app_config):
-        return [v for k,v in app_config.__dict__.items()
-                if MATCH_EXTENSION.match(k)]
+        return [v for k,v in inspect.getmembers(app_config)
+            if MATCH_EXTENSION.match(k)]
 
     def extend_extensions(self, app_config):
         e = app_config.EXTENSIONS
@@ -43,6 +44,7 @@ class Flex(object):
         try:
             extension.initiate(app)
         except Exception as e:
+            print "CONFIGURE EXTENSION ERROR"
             raise e
 
     def configure_extensions(self, app, app_config):
@@ -51,6 +53,7 @@ class Flex(object):
         ordered = self.order_extensions(wrapped)
         [self.configure_extension(app, extension) for extension in ordered]
         self.extensions = ordered
+        print self.extensions
 
 
 class ExtensionConfig(object):
@@ -83,9 +86,10 @@ class ExtensionConfig(object):
 
     def initiate(self, app):
         try:
+            print "initiating....{}".format(self)
             return getattr(self, self.init_type, None)(app)
         except Exception as e:
-            raise
+            raise e
 
     def by_class(self, app):
         return self.extension_class(app, *self.args, **self.kwargs)

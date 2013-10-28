@@ -6,7 +6,7 @@ from flask.ext.cache import Cache
 
 cache = Cache(config={'CACHE_TYPE': 'simple'})
 
-class TestConfig(object):
+class TestDefaultConfig(object):
     TESTING = True
     BEFORE_REQUESTS = []
     AFTER_REQUESTS = []
@@ -14,9 +14,16 @@ class TestConfig(object):
     TEMPLATE_FILTERS = []
     CONTEXT_PROCESSORS = {}
     ERROR_HANDLERS = []
-    EXTENSIONS = [{'extension': Gravatar, 'size':100, 'rating':'g', 'precedence':1},
-                  #ExtensionConfig(Gravatar, size=100, rating='g', precedence=1),
-                  ExtensionConfig(cache, init_type='by_init', precedence=1000)]
+    EXTENSIONS = [ExtensionConfig(cache, init_type='by_init', precedence=1000)]
+
+class TestGravatarConfig(object):
+    GRAVATAR_EXTENSION = {'extension': Gravatar,
+                          'size':100,
+                          'rating':'g',
+                          'precedence':1}
+
+class TestConfig(TestDefaultConfig, TestGravatarConfig):
+    TESTING = True
 
 
 class FlailsTest(TestCase):
