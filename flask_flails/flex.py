@@ -5,6 +5,8 @@ import inspect
 
 MATCH_EXTENSION = re.compile(".*_EXTENSION\Z")
 
+class FlexError(Exception): pass
+
 class Flex(object):
     """
     Flask extension registration
@@ -17,16 +19,16 @@ class Flex(object):
             if MATCH_EXTENSION.match(k)]
 
     def extend_extensions(self, app_config):
-        e = app_config.EXTENSIONS
-        [e.append(oe) for oe in self.gather_extensions(app_config)]
-        return e
+        exts = app_config.EXTENSIONS
+        [exts.append(oe) for oe in self.gather_extensions(app_config)]
+        return exts
 
     def order_extensions(self, extensions):
         return sorted(extensions, key=attrgetter('precedence'))
 
-    def wrap_extension(self, e):
-        if isinstance(e, dict):
-            f = copy(e)
+    def wrap_extension(self, ext):
+        if isinstance(ext, dict):
+            f = copy(ext)
             extension_class = f.pop('extension', None)
             args = f.pop('args', None)
             kwargs = f
@@ -35,17 +37,16 @@ class Flex(object):
             else:
                 return ExtensionConfig(extension_class, **kwargs)
         else:
-            return e
+            return ext
 
     def wrap_extensions(self, extensions):
-        return [self.wrap_extension(e) for e in extensions]
+        return [self.wrap_extension(ext) for ext in extensions]
 
     def configure_extension(self, app, extension):
         try:
             extension.initiate(app)
         except Exception as e:
-            print "CONFIGURE EXTENSION ERROR"
-            raise e
+            raise FlexError(str(e))
 
     def configure_extensions(self, app, app_config):
         exts = self.extend_extensions(app_config)

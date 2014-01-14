@@ -1,5 +1,4 @@
 import pprint
-from .flog import flails_logger
 
 class Flinf(object):
     """

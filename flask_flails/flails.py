@@ -1,15 +1,13 @@
-from flask import Flask
+from flask import Flask, Blueprint, render_template
 from .flass import Flass
 from .flex import Flex
 from .flinf import Flinf
 from .flab import Flab
 from .flap import Flap
-from .flog import flails_logger as _flog
 from .signals import app_created_successfully
 
 
-class FlailsException(Exception):
-    pass
+class FlailsError(Exception): pass
 
 
 class Flails(object):
@@ -27,7 +25,8 @@ class Flails(object):
                  blueprints_manager_cls=Flab,
                  assets_manager_cls=Flass,
                  extensions_manager_cls=Flex,
-                 information_manager_cls=Flinf):
+                 information_manager_cls=Flinf,
+                 information_page=True):
         self.generated_app = None
         self.generated_app_info = None
         self.app_name = app_name
@@ -43,6 +42,7 @@ class Flails(object):
         self.assets_do_parse_static = assets_do_parse_static
         self.assets_do_exclude_blueprints = assets_do_exclude_blueprints
         self.assets_do_write_manifests = assets_do_write_manifests
+        self.information_page = information_page
         self.initialize_managers()
 
     def check_config(self, app_config, app_config_requires):
@@ -62,6 +62,14 @@ class Flails(object):
         self.app_extensions = self.app_extensions_cls(self)
         self.app_information = self.app_information_cls
         self.app_blueprints = self.app_blueprints_cls(self)
+
+    @property
+    def info_page_blueprint(self):
+        info_bp = Blueprint('info_page', __name__, template_folder='templates')
+        def info_page():
+            return render_template('info_page.html', info=self.generated_app_info)
+        info_bp.route('/info_page', methods=['GET'])(info_page)
+        return info_bp
 
     def create_app(self, **kwargs):
         self.create_time_additions('EXTENSIONS',
@@ -98,10 +106,13 @@ class Flails(object):
             self.app_assets.set_env()
             self.app_assets.register_assets(app)
 
+        if self.information_page:
+            app.register_blueprint(self.info_page_blueprint)
+
         self.generated_app = app
 
         app_created_successfully.send(self)
-        _flog.info("Application {!r} successfully generated".format(self.generated_app))
+        app.logger.info("Application {!r} successfully generated".format(self.generated_app))
 
         setattr(self, 'generated_app_info', self.app_information(self, self.generated_app, self.requested_info))
 

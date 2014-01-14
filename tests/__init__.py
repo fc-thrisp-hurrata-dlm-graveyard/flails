@@ -16,11 +16,13 @@ class TestDefaultConfig(object):
     ERROR_HANDLERS = []
     EXTENSIONS = [ExtensionConfig(cache, init_type='by_init', precedence=1000)]
 
+
 class TestGravatarConfig(object):
     GRAVATAR_EXTENSION = {'extension': Gravatar,
                           'size':100,
                           'rating':'g',
                           'precedence':1}
+
 
 class TestConfig(TestDefaultConfig, TestGravatarConfig):
     TESTING = True
