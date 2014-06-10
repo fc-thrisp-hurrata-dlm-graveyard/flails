@@ -27,6 +27,10 @@ class Flinf(object):
         return self.app.jinja_env.__dict__
 
     @property
+    def list_templates(self):
+        return self.app.jinja_env.list_templates()
+
+    @property
     def asset_env(self):
         return self.jinja_env.get('assets_environment').__dict__
 
