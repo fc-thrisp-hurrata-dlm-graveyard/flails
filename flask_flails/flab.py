@@ -3,16 +3,14 @@ from werkzeug import import_string
 
 
 class Flab(object):
-    """
-    Flails blueprint management
-    """
+    """Flails blueprint management"""
+
     def __init__(self, flail):
         self.flail = flail
         self.registrations = flail.app_registrations.blueprint_actions
 
     def configure_blueprints(self, app, blueprints):
-        """
-        Registers blueprints with the app.
+        """Registers blueprints with the app.
         If you have a preconfigured/complete blueprint, you can skip most
         registration steps by naming the exportable blueprint as BLUEPRINT
         which is registered on application without further processing.

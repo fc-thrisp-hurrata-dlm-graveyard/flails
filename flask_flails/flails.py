@@ -7,67 +7,67 @@ from .flap import Flap
 from .signals import app_created_successfully
 
 
-class FlailsError(Exception): pass
+class FlailsError(Exception):
+    pass
 
 
 class Flails(object):
-    def __init__(self,
-                 app_name=__name__,
-                 app_config=None,
-                 app_config_requires=None,
-                 app_inside_module=None,
-                 requested_info=None,
-                 assets_do_register=True,
-                 assets_do_parse_static=True,
-                 assets_do_exclude_blueprints=None,
-                 assets_do_write_manifests=False,
-                 registration_manager_cls=Flap,
-                 blueprints_manager_cls=Flab,
-                 assets_manager_cls=Flass,
-                 extensions_manager_cls=Flex,
-                 information_manager_cls=Flinf,
-                 information_page=True):
-        self.generated_app = None
-        self.generated_app_info = None
-        self.app_name = app_name
-        self.app_config = self.check_config(app_config, app_config_requires)
-        self.app_inside_module = app_inside_module
-        self.app_registrations_cls = registration_manager_cls
-        self.app_blueprints_cls = blueprints_manager_cls
-        self.app_assets_cls = assets_manager_cls
-        self.app_extensions_cls = extensions_manager_cls
-        self.app_information_cls = information_manager_cls
-        self.requested_info = requested_info
-        self.assets_do_register = assets_do_register
-        self.assets_do_parse_static = assets_do_parse_static
-        self.assets_do_exclude_blueprints = assets_do_exclude_blueprints
-        self.assets_do_write_manifests = assets_do_write_manifests
-        self.information_page = information_page
-        self.initialize_managers()
+    registration_manager_cls = Flap
+    blueprints_manager_cls = Flab
+    assets_manager_cls = Flass
+    extensions_manager_cls = Flex
+    information_manager_cls = Flinf
+    initialize = {'app_name': __name__,
+                  'app_config_requires': None,
+                  'app_inside_module': None,
+                  'requested_info': None,
+                  'assets_env': None,
+                  'assets_do_register': True,
+                  'assets_do_parse_static': True,
+                  'assets_do_exclude_blueprints': None,
+                  'assets_do_log': True,
+                  'information_page': True}
+
+    def __init__(self, initialize=initialize, **kwargs):
+        for k, v in initialize.items():
+            setattr(self, k, kwargs.pop(k, v))
+        self.app_config = self.check_config(kwargs.pop('app_config', None), kwargs.pop('app_config_requires', None))
+        # self.app_inside_module = kwargs.pop('app_inside_module', None)
+        # self.requested_info = kwargs.pop('requested_info', None)
+        # self.assets_env = kwargs.pop('assets_env', None)
+        # self.assets_do_register = kwargs.pop('assets_do_register', None)
+        # self.assets_do_parse_static = kwargs.pop('assets_do_parse_static', None)
+        # self.assets_do_exclude_blueprints = kwargs.pop('assets_do_exclude_blueprints', None)
+        # self.assets_do_log = kwargs.pop('assets_do_log', None)
+        # self.information_page = kwargs.pop('information_page', None)
+        self.initialize_managers(**kwargs)
 
     def check_config(self, app_config, app_config_requires):
         """Forces a check on your configuration file"""
         if app_config_requires is not None:
             for c in app_config_requires:
                 if not hasattr(app_config, c):
-                    raise FlailsException('Configuration MUST contain or specify in some manner: {}'.format(c))
+                    raise FlailsError('Configuration MUST contain or specify in some manner: {}'.format(c))
         return app_config
 
-    def initialize_managers(self):
-        self.app_registrations = self.app_registrations_cls(self)
-        self.app_assets = self.app_assets_cls(self,
-                                              exclude_blueprints=self.assets_do_exclude_blueprints,
-                                              parse_static_main=self.assets_do_parse_static,
-                                              write_manifests=self.assets_do_write_manifests)
-        self.app_extensions = self.app_extensions_cls(self)
-        self.app_information = self.app_information_cls
-        self.app_blueprints = self.app_blueprints_cls(self)
+    def initialize_managers(self, **kwargs):
+        self.app_registrations = self.registration_manager_cls(self)
+        self.app_assets = self.assets_manager_cls(self,
+                                                  app_asset_env=kwargs.pop('assets_env', None),
+                                                  exclude_blueprints=kwargs.pop('assets_do_exclude_blueprints', None),
+                                                  parse_static_main=kwargs.pop('assets_do_parse_static', True),
+                                                  do_log=kwargs.pop('assets_do_log', True))
+        self.app_extensions = self.extensions_manager_cls(self)
+        self.app_information = self.information_manager_cls
+        self.app_blueprints = self.blueprints_manager_cls(self)
 
     @property
     def info_page_blueprint(self):
         info_bp = Blueprint('info_page', __name__, template_folder='templates')
+
         def info_page():
             return render_template('info_page.html', info=self.generated_app_info)
+
         info_bp.route('/info_page', methods=['GET'])(info_page)
         return info_bp
 
@@ -103,13 +103,12 @@ class Flails(object):
         self.configure_blueprints(app, getattr(self.app_config, 'BLUEPRINTS', None))
 
         if self.assets_do_register:
-            self.app_assets.set_env()
             self.app_assets.register_assets(app)
 
         if self.information_page:
             app.register_blueprint(self.info_page_blueprint)
 
-        self.generated_app = app
+        setattr(self, 'generated_app', app)
 
         app_created_successfully.send(self)
         app.logger.info("Application {!r} successfully generated".format(self.generated_app))

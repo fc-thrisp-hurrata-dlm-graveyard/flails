@@ -1,151 +1,163 @@
-import glob
-from flask.ext.assets import Environment, Bundle
-from time import time
 import os
+from flask.ext.assets import Environment, Bundle
+
 
 class Flass(object):
-    """
-    Flask asset registration
-    """
-    def __init__(self, flail,
-                       parse_static_main=True,
-                       exclude_blueprints=None,
-                       write_manifests=False):
+    """Flask asset registration"""
+
+    def __init__(self,
+                 flail,
+                 **kwargs):
         self.flail = flail
-        self.app_asset_env = None
-        self.js_content = None
-        self.css_content = None
-        self.parse_static_main = parse_static_main
+        self.app_asset_env = self.set_env(kwargs.pop('app_asset_env', None))
+        self.parse_static_main = kwargs.pop('parse_static_main', True)
         self._exclude_blueprints = ['debugtoolbar', '_uploads', '_themes']
-        if exclude_blueprints:
-            self._exclude_blueprints.extend(exclude_blueprints)
-        self.write_manifests = write_manifests
+        if kwargs.get('exclude_blueprints', None):
+            self._exclude_blueprints.extend(kwargs.pop('exclude_blueprints'))
+        self.exclude_files = kwargs.pop('exclude_files', [])
+        self.do_log = kwargs.pop('do_log', True)
 
-    def set_env(self):
-        # provide support for configuration of the environment
-        # as well as get env in sync with other extensions
-        # using env
-        self.app_asset_env = Environment()
-
-    def register_env(self, app):
-        env = self.app_asset_env
-        env.init_app(app)
-
-    def register_env_fleem(self, app):
-        app.extensions['fleem_manager'].asset_env = app.jinja_env.assets_environment
-        app.extensions['fleem_manager'].refresh()
-
-    def manifest(self, where, name, extension, resources):
-        filename = "{}.manifest".format(name)
-        entry = "{} for {} == {}".format(extension,
-                                         name,
-                                         resources)
-
-        try:
-            f = open(os.path.join(where, filename), 'a')
-            f.write("{}:: {}\n".format(time(), entry))
-        except:
-            f = open(os.path.join(os.getcwd(), filename), 'a')
-            f.write("{}:: {}\n".format(time(), entry))
+    def set_env(self, app_asset_env):
+        if not app_asset_env:
+            app_asset_env = Environment()
+        return app_asset_env
 
     def register_assets(self, app):
-        """
-        Registers all css and js assets with application
-        """
+        """Registers all css and js assets with application"""
 
-        self.register_env(app)
+        setattr(self, 'app', app)
 
-        if app.extensions.get('fleem_manager'):
-            self.register_env_fleem(app)
+        if app is not None:
+            self.register_env()
 
-        asset_env = app.jinja_env.assets_environment
+            self.register_env_fleem()
 
-        static_folder = app.static_folder
+            setattr(self, 'asset_env', self.app.jinja_env.assets_environment)
 
-        css_files, less_files, js_files, coffee_files = [],[],[],[]
+            setattr(self, 'static_folder', self.app.static_folder)
 
+            self.gather_raw_files
+
+            if self.raw_files:
+                self.gather_js(self.raw_files)
+                self.gather_css(self.raw_files)
+
+    def register_env(self):
+        if self.app_asset_env:
+            self.app_asset_env.init_app(self.app)
+
+    def register_env_fleem(self):
+        if self.app.extensions.get('fleem_manager'):
+            self.app.extensions['fleem_manager'].asset_env = self.app.jinja_env.assets_environment
+            self.app.extensions['fleem_manager'].refresh()
+
+    @property
+    def gather_raw_files(self):
+        raw = {'css': [], 'less': [], 'js': [], 'coffee': []}
+        static_raw = self.static_main(raw)
+        blueprint_raw = self.static_blueprints(static_raw)
+        setattr(self, 'raw_files', blueprint_raw)
+        self.log_actions("raw files: {}".format(self.raw_files))
+
+    def static_main(self, raw):
         if self.parse_static_main:
-            css_files.extend(self._get_css(static_folder))
-            less_files.extend(self._get_less(static_folder))
-            js_files.extend(self._get_js(static_folder))
-            coffee_files.extend(self._get_coffee(static_folder))
+            for k in raw.keys():
+                raw[k].extend(self._get_files(self.static_folder, k, k))
+        return raw
 
-        if app.blueprints:
-            blueprints = {name: bp for name,bp in app.blueprints.items()\
-                          if name not in self._exclude_blueprints}
+    def static_blueprints(self, raw):
+        for name, bp in self._asset_blueprints.items():
+            if bp.static_folder:
+                for k in raw.keys():
+                    raw[k].extend(self._bp_name(name,
+                                                self._get_files(bp.static_folder,
+                                                                k, k)))
+        return raw
 
-            for name, bp in blueprints.items():
-                if bp.static_folder:
-                    css_files.extend(self._append_bp_name(name,
-                                                          self._get_css(bp.static_folder)))
-                    less_files.extend(self._append_bp_name(name,
-                                                           self._get_less(bp.static_folder)))
-                    js_files.extend(self._append_bp_name(name,
-                                                         self._get_js(bp.static_folder)))
-                    coffee_files.extend(self._append_bp_name(name,
-                                                             self._get_coffee(bp.static_folder)))
+    @property
+    def _asset_blueprints(self):
+        return {name: bp for name, bp in self.app.blueprints.items()
+                if self.app and name not in self._exclude_blueprints}
 
+    def _bp_name(self, name, files):
+        return ['{}/{}'.format(name, f) for f in files]
+
+    def _get_files(self, static_folder, folder, extension):
+        files_list = []
+        for root, dirs, files in os.walk(os.path.join(static_folder, folder)):
+            for file in files:
+                if file.endswith(".{}".format(extension))\
+                        and all(file != s for s in self.exclude_files):
+                    path_parts = self._splitall(root)
+                    static_index = path_parts.index("static")
+                    path_parts = path_parts[static_index + 1:]
+                    path_parts.append(file)
+                    files_list.append('/'.join(path_parts))
+        return files_list
+
+    def _splitall(self, path):
+        allparts = []
+        while 1:
+            parts = os.path.split(path)
+            if parts[0] == path:
+                allparts.insert(0, parts[0])
+                break
+            elif parts[1] == path:
+                allparts.insert(0, parts[1])
+                break
+            else:
+                path = parts[0]
+                allparts.insert(0, parts[1])
+        return allparts
+
+    def gather_js(self, raw_files):
         js_contents = []
-        if js_files:
-            js_contents.append(Bundle(*js_files))
-        if coffee_files:
-            js_contents.append(Bundle(*coffee_files,
-                                      filters='coffeescript',
-                                      output='js/coffee_all.js'))
-        if js_contents:
-            js_all = Bundle(*js_contents,
-                            filters='rjsmin',
-                            output='js/application.js')
-            asset_env.register('js_all',
-                               js_all)
-        self.js_content = js_contents
-        if self.write_manifests:
-            self.manifest(static_folder,
-                          "js_all",
-                          ".js",
-                          [x.contents for x in js_contents])
 
+        if raw_files['js']:
+            js_contents.append(self.make_bundle(raw_files['js']))
+        if raw_files['coffee']:
+            js_contents.append(self.make_bundle(raw_files['coffee'],
+                                                filters='coffeescript',
+                                                output='js/coffee_all.js'))
+
+        if js_contents:
+            js_all = self.make_bundle(js_contents,
+                                      filters='rjsmin',
+                                      output='js/application.js')
+            self.register_asset('js_all', js_all)
+        if self.do_log:
+            self.log_actions(self.manifest("js_all",
+                                           ".js",
+                                           [x.contents for x in js_contents]))
+
+    def gather_css(self, raw_files):
         css_contents = []
-        if css_files:
-            css_contents.append(Bundle(*css_files))
-        if less_files:
-            css_contents.append(Bundle(*less_files,
-                                       filters='less',
-                                       output='css/less_all.css'))
+
+        if raw_files['css']:
+            css_contents.append(self.make_bundle(raw_files['css']))
+        if raw_files['less']:
+            css_contents.append(self.make_bundle(raw_files['less'],
+                                                 filters='less',
+                                                 output='css/less_all.css'))
 
         if css_contents:
-            css_all = Bundle(*css_contents,
-                             filters='cssmin',
-                             output='css/application.css')
-            asset_env.register('css_all',
-                               css_all)
-        self.css_content = css_contents
-        if self.write_manifests:
-            self.manifest(static_folder,
-                          "css_all",
-                          ".css",
-                          [x.contents for x in css_contents])
+            css_all = self.make_bundle(css_contents,
+                                       filters='cssmin',
+                                       output='css/application.css')
+            self.register_asset('css_all', css_all)
+        if self.do_log:
+            self.log_actions(self.manifest("css_all",
+                                           ".css",
+                                           [x.contents for x in css_contents]))
 
-    def _get_resource_files(self,
-                            static_folder,
-                            resource_folder,
-                            resource_ext):
-        return [file[len(static_folder) + 1:] for file in\
-                glob.glob('{}/{}/*.{}'.format(static_folder,
-                                              resource_folder,
-                                              resource_ext))]
+    def make_bundle(self, contents, filters=None, output=None):
+        return Bundle(*contents, filters=filters, output=output)
 
-    def _get_css(self, static_folder):
-        return self._get_resource_files(static_folder, 'css', 'css')
+    def register_asset(self, name, bundle):
+        self.asset_env.register(name, bundle)
 
-    def _get_less(self, static_folder):
-        return self._get_resource_files(static_folder, 'css', 'less')
+    def manifest(self, name, extension, resources):
+        return "{} for {} == {}".format(extension, name, resources)
 
-    def _get_js(self, static_folder):
-        return self._get_resource_files(static_folder, 'js', 'js')
-
-    def _get_coffee(self, static_folder):
-        return self._get_resource_files(static_folder, 'js', 'coffee')
-
-    def _append_bp_name(self, name, files):
-        return ['{}/{}'.format(name, f) for f in files]
+    def log_actions(self, message):
+        self.app.logger.info(message)

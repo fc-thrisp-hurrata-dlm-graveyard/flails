@@ -5,18 +5,20 @@ import inspect
 
 MATCH_EXTENSION = re.compile(".*_EXTENSION\Z")
 
-class FlexError(Exception): pass
+
+class FlexError(Exception):
+    pass
+
 
 class Flex(object):
-    """
-    Flask extension registration
-    """
+    """Flask extension registration"""
+
     def __init__(self, flail):
         self.flail = flail
 
     def gather_extensions(self, app_config):
-        return [v for k,v in inspect.getmembers(app_config)
-            if MATCH_EXTENSION.match(k)]
+        return [v for k, v in inspect.getmembers(app_config)
+                if MATCH_EXTENSION.match(k)]
 
     def extend_extensions(self, app_config):
         exts = app_config.EXTENSIONS
@@ -57,8 +59,7 @@ class Flex(object):
 
 
 class ExtensionConfig(object):
-    """
-    A configuration wrapper for extension registry.
+    """A configuration wrapper for extension registry.
 
     :param init_type: How the extension will be registered defaults to
                       'by_class' which registers the extension by:
@@ -88,7 +89,7 @@ class ExtensionConfig(object):
         try:
             return getattr(self, self.init_type, None)(app)
         except Exception as e:
-            raise e
+            raise FlexError(str(e))
 
     def by_class(self, app):
         return self.extension_class(app, *self.args, **self.kwargs)
@@ -98,8 +99,7 @@ class ExtensionConfig(object):
 
     def __repr__(self):
         return "<ExtensionConfig for: ({}, args: {}, kwargs: {}, precedence: {})>"\
-                .format\
-                (self.extension_class,
-                 self.args,
-                 self.kwargs,
-                 self.precedence)
+            .format(self.extension_class,
+                    self.args,
+                    self.kwargs,
+                    self.precedence)
