@@ -47,6 +47,10 @@ class Flinf(object):
 
     @property
     def app_information(self):
+        """Returns a dict containing parameters in cls.provide_information
+        list attribute. This will first attempt to resolve the parameter in the
+        list as an attribute/property on this class, then as an attribute on
+        the current associated application."""
         to_return = {}
         for item in self.provide_information:
             to_return[item] = getattr(self, item, self.return_basic(item))

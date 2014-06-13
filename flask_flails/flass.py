@@ -4,17 +4,15 @@ from flask.ext.assets import Environment, Bundle
 
 class Flass(object):
     """Flask asset registration"""
+    _exclude_blueprints = ['debugtoolbar', '_uploads', '_themes']
 
-    def __init__(self,
-                 flail,
-                 **kwargs):
+    def __init__(self, flail, **kwargs):
         self.flail = flail
         self.app_asset_env = self.set_env(kwargs.pop('app_asset_env', None))
-        self.parse_static_main = kwargs.pop('parse_static_main', True)
-        self._exclude_blueprints = ['debugtoolbar', '_uploads', '_themes']
-        if kwargs.get('exclude_blueprints', None):
-            self._exclude_blueprints.extend(kwargs.pop('exclude_blueprints'))
-        self.exclude_files = kwargs.pop('exclude_files', [])
+        self.do_parse_static_main = kwargs.pop('parse_static_main', True)
+        if kwargs.get('do_exclude_blueprints'):
+            self._exclude_blueprints.extend(kwargs.pop('do_exclude_blueprints'))
+        self.do_exclude_files = kwargs.pop('do_exclude_files', [])
         self.do_log = kwargs.pop('do_log', True)
 
     def set_env(self, app_asset_env):
@@ -32,8 +30,6 @@ class Flass(object):
 
             self.register_env_fleem()
 
-            setattr(self, 'asset_env', self.app.jinja_env.assets_environment)
-
             setattr(self, 'static_folder', self.app.static_folder)
 
             self.gather_raw_files
@@ -45,10 +41,11 @@ class Flass(object):
     def register_env(self):
         if self.app_asset_env:
             self.app_asset_env.init_app(self.app)
+            setattr(self, 'asset_env', self.app.jinja_env.assets_environment)
 
     def register_env_fleem(self):
-        if self.app.extensions.get('fleem_manager'):
-            self.app.extensions['fleem_manager'].asset_env = self.app.jinja_env.assets_environment
+        if self.app.extensions.get('fleem_manager') and self.asset_env:
+            self.app.extensions['fleem_manager'].asset_env = self.asset_env
             self.app.extensions['fleem_manager'].refresh()
 
     @property
@@ -60,7 +57,7 @@ class Flass(object):
         self.log_actions("raw files: {}".format(self.raw_files))
 
     def static_main(self, raw):
-        if self.parse_static_main:
+        if self.do_parse_static_main:
             for k in raw.keys():
                 raw[k].extend(self._get_files(self.static_folder, k, k))
         return raw
@@ -87,7 +84,7 @@ class Flass(object):
         for root, dirs, files in os.walk(os.path.join(static_folder, folder)):
             for file in files:
                 if file.endswith(".{}".format(extension))\
-                        and all(file != s for s in self.exclude_files):
+                        and all(file != s for s in self.do_exclude_files):
                     path_parts = self._splitall(root)
                     static_index = path_parts.index("static")
                     path_parts = path_parts[static_index + 1:]
@@ -126,8 +123,8 @@ class Flass(object):
                                       output='js/application.js')
             self.register_asset('js_all', js_all)
         if self.do_log:
-            self.log_actions(self.manifest("js_all",
-                                           ".js",
+            self.log_actions(self.manifest(".js",
+                                           "js_all",
                                            [x.contents for x in js_contents]))
 
     def gather_css(self, raw_files):
@@ -146,8 +143,8 @@ class Flass(object):
                                        output='css/application.css')
             self.register_asset('css_all', css_all)
         if self.do_log:
-            self.log_actions(self.manifest("css_all",
-                                           ".css",
+            self.log_actions(self.manifest(".css",
+                                           "css_all",
                                            [x.contents for x in css_contents]))
 
     def make_bundle(self, contents, filters=None, output=None):
@@ -156,7 +153,7 @@ class Flass(object):
     def register_asset(self, name, bundle):
         self.asset_env.register(name, bundle)
 
-    def manifest(self, name, extension, resources):
+    def manifest(self, extension, name, resources):
         return "{} for {} == {}".format(extension, name, resources)
 
     def log_actions(self, message):

@@ -1,20 +1,14 @@
 class Flap(object):
-    """
-    Common registration methods for applications & blueprints
-    """
+    """Common registration methods for applications & blueprints"""
     def __init__(self, flail):
         self.flail = flail
 
     def configure_context_processors(self, app, context_processors):
-        """
-        Sets app wide context processors.
-        """
+        """Sets app wide context processors."""
         app.context_processor(lambda: context_processors)
 
     def configure_app_context_processors(self, app, context_processors):
-        """
-        Sets app wide context processors from a blueprint.
-        """
+        """Sets app wide context processors from a blueprint."""
         app.app_context_processor(lambda: context_processors)
 
     def configure_jinja_globals(self, app, jinja_globals):
@@ -22,58 +16,42 @@ class Flap(object):
             app.jinja_env.globals[k] = v
 
     def configure_template_filters(self, app, template_filters):
-        """
-        Sets template filters on the jinja2 environment.
-        """
+        """Sets template filters on the jinja2 environment."""
         for filter_name, filter_fn in template_filters:
             app.jinja_env.filters[filter_name] = filter_fn
 
     def configure_before_handlers(self, app, before_handlers):
-        """
-        Sets before handlers.
-        """
+        """Sets before handlers."""
         for before in before_handlers:
             before = app.before_request(before)
 
     def configure_before_app_handlers(self, app, before_handlers):
-        """
-        Sets app wide before handlers from a blueprint.
-        """
+        """Sets app wide before handlers from a blueprint."""
         for before in before_handlers:
             before = app.before_app_request(before)
 
     def configure_after_handlers(self, app, after_handlers):
-        """
-        Sets after handlers.
-        """
+        """Sets after handlers."""
         for after in after_handlers:
             after = app.after_request(after)
 
     def configure_after_app_handlers(self, app, after_handlers):
-        """
-        Sets app wide after handlers from a blueprint.
-        """
+        """Sets app wide after handlers from a blueprint."""
         for after in after_handlers:
             after = app.after_app_request(after)
 
     def configure_log_handlers(self, app, log_handlers):
-        """
-        Sets log handlers for the app.
-        """
+        """Sets log handlers for the app."""
         for handler in log_handlers:
             app.logger.addHandler(handler)
 
     def configure_error_handlers(self, app, error_handlers):
-        """
-        Sets custom error handlers.
-        """
+        """Sets custom error handlers."""
         for code, fn in error_handlers:
             fn = app.errorhandler(code)(fn)
 
     def configure_app_error_handlers(self, app, error_handlers):
-        """
-        Sets app wide custom error handlers from a blueprint.
-        """
+        """Sets app wide custom error handlers from a blueprint."""
         for code, fn in error_handlers:
             fn = app.app_errorhandler(code)(fn)
 
@@ -85,9 +63,7 @@ class Flap(object):
                 Exception(e)
 
     def configure_middlewares(self, app, middlewares):
-        """
-        Adds middlewares to the app.
-        """
+        """Adds middlewares to the app."""
         if middlewares:
             for m in middlewares:
                 if isinstance(m, list) or isinstance(m, tuple):

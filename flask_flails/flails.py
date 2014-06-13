@@ -31,15 +31,9 @@ class Flails(object):
     def __init__(self, initialize=initialize, **kwargs):
         for k, v in initialize.items():
             setattr(self, k, kwargs.pop(k, v))
-        self.app_config = self.check_config(kwargs.pop('app_config', None), kwargs.pop('app_config_requires', None))
-        # self.app_inside_module = kwargs.pop('app_inside_module', None)
-        # self.requested_info = kwargs.pop('requested_info', None)
-        # self.assets_env = kwargs.pop('assets_env', None)
-        # self.assets_do_register = kwargs.pop('assets_do_register', None)
-        # self.assets_do_parse_static = kwargs.pop('assets_do_parse_static', None)
-        # self.assets_do_exclude_blueprints = kwargs.pop('assets_do_exclude_blueprints', None)
-        # self.assets_do_log = kwargs.pop('assets_do_log', None)
-        # self.information_page = kwargs.pop('information_page', None)
+        self.app_config = self.check_config(kwargs.pop('app_config', None),
+                                            kwargs.pop('app_config_requires',
+                                                       None))
         self.initialize_managers(**kwargs)
 
     def check_config(self, app_config, app_config_requires):
@@ -54,8 +48,9 @@ class Flails(object):
         self.app_registrations = self.registration_manager_cls(self)
         self.app_assets = self.assets_manager_cls(self,
                                                   app_asset_env=kwargs.pop('assets_env', None),
-                                                  exclude_blueprints=kwargs.pop('assets_do_exclude_blueprints', None),
-                                                  parse_static_main=kwargs.pop('assets_do_parse_static', True),
+                                                  do_exclude_blueprints=kwargs.pop('assets_do_exclude_blueprints', None),
+                                                  do_parse_static_main=kwargs.pop('assets_do_parse_static', True),
+                                                  do_exclude_files=kwargs.pop('assets_do_exclude_files', []),
                                                   do_log=kwargs.pop('assets_do_log', True))
         self.app_extensions = self.extensions_manager_cls(self)
         self.app_information = self.information_manager_cls
